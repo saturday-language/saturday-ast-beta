@@ -17,9 +17,12 @@ mod scanner;
 mod token;
 mod token_type;
 // mod ast_printer;
+mod callable;
 mod environment;
 mod interpreter;
+mod native_functions;
 mod object;
+mod saturday_function;
 mod stmt;
 
 fn main() {

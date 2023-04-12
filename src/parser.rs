@@ -4,7 +4,7 @@ use crate::expr::{
 };
 use crate::object::Object;
 use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, WhileStmt,
+  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, Stmt, WhileStmt,
 };
 use crate::token::Token;
 use crate::token_type::*;
@@ -41,7 +41,9 @@ impl<'a> Parser<'a> {
   }
 
   fn declaration(&mut self) -> Result<Stmt, SaturdayResult> {
-    let result = if self.is_match(&[TokenType::Def]) {
+    let result = if self.is_match(&[TokenType::Fun]) {
+      self.function("function")
+    } else if self.is_match(&[TokenType::Def]) {
       self.def_declaration()
     } else {
       self.statement()
@@ -213,6 +215,42 @@ impl<'a> Parser<'a> {
     Ok(Stmt::Expression(ExpressionStmt { expression: expr }))
   }
 
+  fn function(&mut self, kind: &str) -> Result<Stmt, SaturdayResult> {
+    let name = self.consume(TokenType::Identifier, &format!("Expect {kind} name"))?;
+    self.consume(
+      TokenType::LeftParen,
+      &format!("Expect '(' after {kind} name."),
+    )?;
+
+    let mut params: Vec<Token> = Vec::new();
+    if !self.check(TokenType::RightParen) {
+      params.push(self.consume(TokenType::Identifier, "Expect parameter name")?);
+      while self.is_match(&[TokenType::Comma]) {
+        if params.len() >= 255 {
+          if !self.had_error {
+            let peek = self.peek().dup();
+            self.error(&peek, "Can't have more than 255 parameters.");
+          }
+        }
+
+        params.push(self.consume(TokenType::Identifier, "Expect parameter name")?);
+      }
+    }
+
+    self.consume(TokenType::RightParen, "Expect ')' after parameters.")?;
+
+    self.consume(
+      TokenType::LeftBrace,
+      &format!("Expect '{{' before {kind} body"),
+    )?;
+    let body = Rc::new(self.block()?);
+    Ok(Stmt::Function(FunctionStmt {
+      name,
+      params: Rc::new(params),
+      body,
+    }))
+  }
+
   fn block(&mut self) -> Result<Vec<Stmt>, SaturdayResult> {
     let mut statements = Vec::new();
     while !self.check(TokenType::RightBrace) && !self.is_at_end() {
@@ -375,7 +413,7 @@ impl<'a> Parser<'a> {
       while self.is_match(&[TokenType::Comma]) {
         if arguments.len() >= 255 && !self.had_error {
           let peek = self.peek().dup();
-          SaturdayResult::parse_error(&peek, "Can't have more than 255 arguments.");
+          self.error(&peek, "Can't have more than 255 arguments.");
           self.had_error = true;
         } else {
           arguments.push(self.expression()?);

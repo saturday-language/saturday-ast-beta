@@ -4,6 +4,7 @@ use crate::token_type::TokenType;
 pub enum SaturdayResult {
   ParseError { token: Token, message: String },
   RuntimeError { token: Token, message: String },
+  SystemError { message: String },
   Error { line: usize, message: String },
   Break,
 }
@@ -36,14 +37,25 @@ impl SaturdayResult {
     err
   }
 
+  pub fn system_error(message: &str) -> Self {
+    let err = SaturdayResult::SystemError {
+      message: message.to_string(),
+    };
+    err.report("");
+    err
+  }
+
   fn report(&self, loc: &str) {
     match self {
       Self::ParseError { token, message } | Self::RuntimeError { token, message } => {
         if token.is(TokenType::Eof) {
           eprintln!("{} at end {}", token.line, message);
         } else {
-          eprintln!("{} at '{}' {}", token.line, token.as_string(), message);
+          eprintln!("line {} at '{}' {}", token.line, token.as_string(), message);
         }
+      }
+      Self::SystemError { message } => {
+        eprintln!("System Error: {message}");
       }
       Self::Error { line, message } => {
         eprintln!("[line {}] Error{}: {}", line, loc, message);

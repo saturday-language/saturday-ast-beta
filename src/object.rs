@@ -1,3 +1,4 @@
+use crate::callable::Callable;
 use std::fmt;
 use std::fmt::Formatter;
 
@@ -29,22 +30,3 @@ impl fmt::Display for Object {
     }
   }
 }
-
-use crate::Interpreter;
-use crate::SaturdayResult;
-use std::vec::Vec;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Callable;
-
-impl Callable {
-  pub fn call(
-    &self,
-    _interpreter: &Interpreter,
-    _arguments: Vec<Object>,
-  ) -> Result<Object, SaturdayResult> {
-    Ok(Object::Nil)
-  }
-}
-
-// TODO 准备看第11天 已经完成了方法调用的解析 但是卡在了无法解析方法名上面

@@ -1,15 +1,20 @@
+use crate::callable::Callable;
 use crate::environment::Environment;
 use crate::error::SaturdayResult;
 use crate::expr::*;
+use crate::native_functions::NativeClock;
 use crate::object::*;
+use crate::saturday_function::SaturdayFunction;
 use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, IfStmt, PrintStmt, Stmt, StmtVisitor, WhileStmt,
+  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, Stmt,
+  StmtVisitor, WhileStmt,
 };
 use crate::token_type::TokenType;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 pub struct Interpreter {
+  pub globals: Rc<RefCell<Environment>>,
   environment: RefCell<Rc<RefCell<Environment>>>,
   nest: RefCell<usize>,
 }
@@ -33,6 +38,17 @@ impl StmtVisitor<()> for Interpreter {
 
   fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), SaturdayResult> {
     self.evaluate(&stmt.expression)?;
+    Ok(())
+  }
+
+  fn visit_function_stmt(&self, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
+    let function = SaturdayFunction::new(&Rc::new(stmt));
+    self.environment.borrow().borrow_mut().define(
+      stmt.name.as_string(),
+      Object::Func(Callable {
+        func: Rc::new(function),
+      }),
+    );
     Ok(())
   }
 
@@ -164,7 +180,18 @@ impl ExprVisitor<Object> for Interpreter {
     }
 
     if let Object::Func(function) = callee {
-      function.call(self, arguments)
+      if arguments.len() != function.func.arity() {
+        return Err(SaturdayResult::runtime_error(
+          &expr.paren,
+          &format!(
+            "Expected {} arguments but got {}.",
+            function.func.arity(),
+            arguments.len()
+          ),
+        ));
+      }
+
+      function.func.call(self, arguments)
     } else {
       Err(SaturdayResult::runtime_error(
         &expr.paren,
@@ -217,8 +244,17 @@ impl ExprVisitor<Object> for Interpreter {
 
 impl Interpreter {
   pub fn new() -> Self {
+    let globals = Rc::new(RefCell::new(Environment::new()));
+    globals.borrow_mut().define(
+      "clock",
+      Object::Func(Callable {
+        func: Rc::new(NativeClock {}),
+      }),
+    );
+
     Self {
-      environment: RefCell::new(Rc::new(RefCell::new(Environment::new()))),
+      globals: Rc::clone(&globals),
+      environment: RefCell::new(Rc::clone(&globals)),
       nest: RefCell::new(0),
     }
   }
@@ -231,7 +267,7 @@ impl Interpreter {
     stmt.accept(self)
   }
 
-  fn execute_block(
+  pub fn execute_block(
     &self,
     statements: &[Stmt],
     environment: Environment,
