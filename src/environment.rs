@@ -117,7 +117,7 @@ mod tests {
     let four_tok = Token::new(TokenType::Identifier, "Four".to_string(), None, 0);
     e.define("Four", Object::Num(73.1));
     assert!(e.assign(&four_tok, Object::Num(89.5)).is_ok());
-    assert_eq!(e.get(&four_tok).unwrap(), Object::Num(89.5));
+    assert_eq!(e.get(&four_tok).ok(), Some(Object::Num(89.5)));
   }
 
   #[test]
@@ -133,7 +133,7 @@ mod tests {
     let four_tok = Token::new(TokenType::Identifier, "Four".to_string(), None, 0);
     e.borrow_mut().define("Four", Object::Num(73.1));
     let f = Environment::new_with_enclosing(Rc::clone(&e));
-    assert_eq!(f.get(&four_tok).unwrap(), Object::Num(73.1));
+    assert_eq!(f.get(&four_tok).ok(), Some(Object::Num(73.1)));
   }
 
   #[test]
@@ -143,6 +143,6 @@ mod tests {
     let mut f = Environment::new_with_enclosing(Rc::clone(&e));
     let four_tok = Token::new(TokenType::Identifier, "Four".to_string(), None, 0);
     assert!(f.assign(&four_tok, Object::Num(91.2)).is_ok());
-    assert_eq!(f.get(&four_tok).unwrap(), Object::Num(91.2));
+    assert_eq!(f.get(&four_tok).ok(), Some(Object::Num(91.2)));
   }
 }

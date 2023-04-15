@@ -5,7 +5,10 @@ use crate::expr::*;
 use crate::native_functions::NativeClock;
 use crate::object::*;
 use crate::saturday_function::SaturdayFunction;
-use crate::stmt::{BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt, StmtVisitor, WhileStmt};
+use crate::stmt::{
+  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
+  StmtVisitor, WhileStmt,
+};
 use crate::token_type::TokenType;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -39,7 +42,7 @@ impl StmtVisitor<()> for Interpreter {
   }
 
   fn visit_function_stmt(&self, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
-    let function = SaturdayFunction::new(&Rc::new(stmt));
+    let function = SaturdayFunction::new(&Rc::new(stmt), &self.environment.borrow());
     self.environment.borrow().borrow_mut().define(
       stmt.name.as_string(),
       Object::Func(Callable {
@@ -311,7 +314,6 @@ impl Interpreter {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::expr::*;
   use crate::token::Token;
 
   fn make_literal(o: Object) -> Box<Expr> {
@@ -554,8 +556,8 @@ mod tests {
     };
     assert!(terp.visit_def_stmt(&def_stmt).is_ok());
     assert_eq!(
-      terp.environment.borrow().borrow().get(&name).unwrap(),
-      Object::Num(23.0)
+      terp.environment.borrow().borrow().get(&name).ok(),
+      Some(Object::Num(23.0))
     );
   }
 
@@ -569,8 +571,8 @@ mod tests {
     };
     assert!(terp.visit_def_stmt(&def_stmt).is_ok());
     assert_eq!(
-      terp.environment.borrow().borrow().get(&name).unwrap(),
-      Object::Nil
+      terp.environment.borrow().borrow().get(&name).ok(),
+      Some(Object::Nil)
     );
   }
 
@@ -587,8 +589,8 @@ mod tests {
 
     let def_expr = VariableExpr { name: name.dup() };
     assert_eq!(
-      terp.visit_variable_expr(&def_expr).unwrap(),
-      Object::Num(23.0)
+      terp.visit_variable_expr(&def_expr).ok(),
+      Some(Object::Num(23.0))
     );
   }
 

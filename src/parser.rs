@@ -3,7 +3,10 @@ use crate::expr::{
   VariableExpr,
 };
 use crate::object::Object;
-use crate::stmt::{BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt, WhileStmt};
+use crate::stmt::{
+  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
+  WhileStmt,
+};
 use crate::token::Token;
 use crate::token_type::*;
 use crate::SaturdayResult;
@@ -240,11 +243,9 @@ impl<'a> Parser<'a> {
     if !self.check(TokenType::RightParen) {
       params.push(self.consume(TokenType::Identifier, "Expect parameter name")?);
       while self.is_match(&[TokenType::Comma]) {
-        if params.len() >= 255 {
-          if !self.had_error {
-            let peek = self.peek().dup();
-            self.error(&peek, "Can't have more than 255 parameters.");
-          }
+        if params.len() >= 255 && !self.had_error {
+          let peek = self.peek().dup();
+          self.error(&peek, "Can't have more than 255 parameters.");
         }
 
         params.push(self.consume(TokenType::Identifier, "Expect parameter name")?);

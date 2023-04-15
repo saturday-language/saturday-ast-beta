@@ -12,7 +12,6 @@ pub enum SaturdayResult {
 }
 
 impl SaturdayResult {
-
   pub fn return_value(value: Object) -> SaturdayResult {
     SaturdayResult::ReturnValue { value }
   }
