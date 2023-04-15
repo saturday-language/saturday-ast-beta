@@ -37,6 +37,7 @@ pub fn generate_ast(output_dir: &str) -> io::Result<()> {
       "Function   : Token name, Rc<Vec<Token>> params, Rc<Vec<Stmt>> body",
       "If         : Expr condition, Box<Stmt> then_branch, Option<Box<Stmt>> else_branch",
       "Print      : Expr expression",
+      "Return     : Token keyword, Option<Expr> value",
       "Def        : Token name, Option<Expr> initializer",
       "While      : Expr condition, Box<Stmt> body",
     ],

@@ -5,10 +5,7 @@ use crate::expr::*;
 use crate::native_functions::NativeClock;
 use crate::object::*;
 use crate::saturday_function::SaturdayFunction;
-use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, Stmt,
-  StmtVisitor, WhileStmt,
-};
+use crate::stmt::{BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt, StmtVisitor, WhileStmt};
 use crate::token_type::TokenType;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -66,6 +63,14 @@ impl StmtVisitor<()> for Interpreter {
     let value = self.evaluate(&stmt.expression)?;
     println!("{value}");
     Ok(())
+  }
+
+  fn visit_return_stmt(&self, stmt: &ReturnStmt) -> Result<(), SaturdayResult> {
+    if let Some(value) = &stmt.value {
+      Err(SaturdayResult::return_value(self.evaluate(value)?))
+    } else {
+      Err(SaturdayResult::return_value(Object::Nil))
+    }
   }
 
   fn visit_def_stmt(&self, stmt: &DefStmt) -> Result<(), SaturdayResult> {

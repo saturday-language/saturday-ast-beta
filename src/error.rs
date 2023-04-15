@@ -1,15 +1,22 @@
+use crate::object::Object;
 use crate::token::Token;
 use crate::token_type::TokenType;
 
 pub enum SaturdayResult {
   ParseError { token: Token, message: String },
   RuntimeError { token: Token, message: String },
-  SystemError { message: String },
   Error { line: usize, message: String },
+  SystemError { message: String },
+  ReturnValue { value: Object },
   Break,
 }
 
 impl SaturdayResult {
+
+  pub fn return_value(value: Object) -> SaturdayResult {
+    SaturdayResult::ReturnValue { value }
+  }
+
   pub fn error(line: usize, message: &str) -> Self {
     let err = Self::Error {
       line,
@@ -60,7 +67,7 @@ impl SaturdayResult {
       Self::Error { line, message } => {
         eprintln!("[line {}] Error{}: {}", line, loc, message);
       }
-      Self::Break => {}
+      Self::Break | Self::ReturnValue { .. } => {}
     };
   }
 }

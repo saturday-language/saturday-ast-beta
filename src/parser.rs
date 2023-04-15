@@ -3,9 +3,7 @@ use crate::expr::{
   VariableExpr,
 };
 use crate::object::Object;
-use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, Stmt, WhileStmt,
-};
+use crate::stmt::{BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt, WhileStmt};
 use crate::token::Token;
 use crate::token_type::*;
 use crate::SaturdayResult;
@@ -105,6 +103,10 @@ impl<'a> Parser<'a> {
 
     if self.is_match(&[TokenType::Print]) {
       return self.print_statement();
+    }
+
+    if self.is_match(&[TokenType::Return]) {
+      return self.return_statement();
     }
 
     if self.is_match(&[TokenType::While]) {
@@ -207,6 +209,18 @@ impl<'a> Parser<'a> {
     let value = self.expression()?;
     self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
     Ok(Stmt::Print(PrintStmt { expression: value }))
+  }
+
+  fn return_statement(&mut self) -> Result<Stmt, SaturdayResult> {
+    let keyword = self.previous().dup();
+    let value = if self.check(TokenType::SemiColon) {
+      None
+    } else {
+      Some(self.expression()?)
+    };
+
+    self.consume(TokenType::SemiColon, "Expect ';' after return value.")?;
+    Ok(Stmt::Return(ReturnStmt { keyword, value }))
   }
 
   fn expression_statement(&mut self) -> Result<Stmt, SaturdayResult> {
