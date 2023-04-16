@@ -94,9 +94,10 @@ fn define_ast(
   for t in &tree_types {
     writeln!(
       file,
-      "      {}::{}(v) => v.accept({}_visitor),",
+      "      {0}::{1}(v) => {3}_visitor.visit_{2}_{3}(self, &v),",
       base_name,
       t.base_class_name,
+      t.base_class_name.to_lowercase(),
       base_name.to_lowercase()
     )?;
   }
@@ -116,29 +117,31 @@ fn define_ast(
   for t in &tree_types {
     writeln!(
       file,
-      "  fn visit_{}_{}(&self, expr: &{}) -> Result<T, SaturdayResult>;",
+      "  fn visit_{0}_{1}(&self, wrapper: &{3}, {1}: &{2}) -> Result<T, SaturdayResult>;",
       t.base_class_name.to_lowercase(),
       base_name.to_lowercase(),
-      t.class_name
+      t.class_name,
+      base_name,
     )?;
   }
   writeln!(file, "}}\n")?;
-
-  for t in &tree_types {
-    writeln!(file, "impl {} {{", t.class_name)?;
-    writeln!(
-      file,
-      "  pub fn accept<T>(&self, visitor: &dyn {}Visitor<T>) -> Result<T, SaturdayResult> {{",
-      base_name
-    )?;
-    writeln!(
-      file,
-      "    visitor.visit_{}_{}(self)",
-      t.base_class_name.to_lowercase(),
-      base_name.to_lowercase()
-    )?;
-    writeln!(file, "  }}")?;
-    writeln!(file, "}}\n")?;
-  }
+  /*
+   for t in &tree_types {
+     writeln!(file, "impl {} {{", t.class_name)?;
+     writeln!(
+       file,
+       "  pub fn accept<T>(&self, visitor: &dyn {}Visitor<T>) -> Result<T, SaturdayResult> {{",
+       base_name
+     )?;
+     writeln!(
+       file,
+       "    visitor.visit_{}_{}(self)",
+       t.base_class_name.to_lowercase(),
+       base_name.to_lowercase()
+     )?;
+     writeln!(file, "  }}")?;
+     writeln!(file, "}}\n")?;
+   }
+  */
   Ok(())
 }

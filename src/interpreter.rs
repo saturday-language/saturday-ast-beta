@@ -20,12 +20,12 @@ pub struct Interpreter {
 }
 
 impl StmtVisitor<()> for Interpreter {
-  fn visit_block_stmt(&self, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
+  fn visit_block_stmt(&self, _: &Stmt, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
     let e = Environment::new_with_enclosing(self.environment.borrow().clone());
     self.execute_block(&stmt.statements, e)
   }
 
-  fn visit_break_stmt(&self, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
+  fn visit_break_stmt(&self, _: &Stmt, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
     if *self.nest.borrow() == 0 {
       Err(SaturdayResult::runtime_error(
         &stmt.token,
@@ -36,12 +36,12 @@ impl StmtVisitor<()> for Interpreter {
     }
   }
 
-  fn visit_expression_stmt(&self, stmt: &ExpressionStmt) -> Result<(), SaturdayResult> {
+  fn visit_expression_stmt(&self, _: &Stmt, stmt: &ExpressionStmt) -> Result<(), SaturdayResult> {
     self.evaluate(&stmt.expression)?;
     Ok(())
   }
 
-  fn visit_function_stmt(&self, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
+  fn visit_function_stmt(&self, _: &Stmt, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
     let function = SaturdayFunction::new(&Rc::new(stmt), &self.environment.borrow());
     self.environment.borrow().borrow_mut().define(
       &stmt.name.as_string(),
@@ -52,7 +52,7 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_if_stmt(&self, stmt: &IfStmt) -> Result<(), SaturdayResult> {
+  fn visit_if_stmt(&self, _: &Stmt, stmt: &IfStmt) -> Result<(), SaturdayResult> {
     if self.is_truthy(&self.evaluate(&stmt.condition)?) {
       self.execute(&stmt.then_branch)
     } else if let Some(else_branch) = &stmt.else_branch {
@@ -62,13 +62,13 @@ impl StmtVisitor<()> for Interpreter {
     }
   }
 
-  fn visit_print_stmt(&self, stmt: &PrintStmt) -> Result<(), SaturdayResult> {
+  fn visit_print_stmt(&self, _: &Stmt, stmt: &PrintStmt) -> Result<(), SaturdayResult> {
     let value = self.evaluate(&stmt.expression)?;
     println!("{value}");
     Ok(())
   }
 
-  fn visit_return_stmt(&self, stmt: &ReturnStmt) -> Result<(), SaturdayResult> {
+  fn visit_return_stmt(&self, _: &Stmt, stmt: &ReturnStmt) -> Result<(), SaturdayResult> {
     if let Some(value) = &stmt.value {
       Err(SaturdayResult::return_value(self.evaluate(value)?))
     } else {
@@ -76,7 +76,7 @@ impl StmtVisitor<()> for Interpreter {
     }
   }
 
-  fn visit_def_stmt(&self, stmt: &DefStmt) -> Result<(), SaturdayResult> {
+  fn visit_def_stmt(&self, _: &Stmt, stmt: &DefStmt) -> Result<(), SaturdayResult> {
     let value = if let Some(initializer) = &stmt.initializer {
       self.evaluate(initializer)?
     } else {
@@ -91,7 +91,7 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_while_stmt(&self, expr: &WhileStmt) -> Result<(), SaturdayResult> {
+  fn visit_while_stmt(&self, _: &Stmt, expr: &WhileStmt) -> Result<(), SaturdayResult> {
     *self.nest.borrow_mut() += 1;
     while self.is_truthy(&self.evaluate(&expr.condition)?) {
       match self.execute(&expr.body) {
@@ -107,7 +107,7 @@ impl StmtVisitor<()> for Interpreter {
 }
 
 impl ExprVisitor<Object> for Interpreter {
-  fn visit_assign_expr(&self, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
+  fn visit_assign_expr(&self, _: &Expr, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
     let value = self.evaluate(&expr.value)?;
     self
       .environment
@@ -117,7 +117,7 @@ impl ExprVisitor<Object> for Interpreter {
     Ok(value)
   }
 
-  fn visit_binary_expr(&self, expr: &BinaryExpr) -> Result<Object, SaturdayResult> {
+  fn visit_binary_expr(&self, _: &Expr, expr: &BinaryExpr) -> Result<Object, SaturdayResult> {
     let left = self.evaluate(&expr.left)?;
     let right = self.evaluate(&expr.right)?;
     let op = expr.operator.token_type();
@@ -180,7 +180,7 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_call_expr(&self, expr: &CallExpr) -> Result<Object, SaturdayResult> {
+  fn visit_call_expr(&self, _: &Expr, expr: &CallExpr) -> Result<Object, SaturdayResult> {
     let callee = self.evaluate(&expr.callee)?;
     let mut arguments = Vec::new();
     for argument in &expr.arguments {
@@ -208,15 +208,15 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_grouping_expr(&self, expr: &GroupingExpr) -> Result<Object, SaturdayResult> {
+  fn visit_grouping_expr(&self, _: &Expr, expr: &GroupingExpr) -> Result<Object, SaturdayResult> {
     self.evaluate(&expr.expression)
   }
 
-  fn visit_literal_expr(&self, expr: &LiteralExpr) -> Result<Object, SaturdayResult> {
+  fn visit_literal_expr(&self, _: &Expr, expr: &LiteralExpr) -> Result<Object, SaturdayResult> {
     Ok(expr.value.clone().unwrap())
   }
 
-  fn visit_logical_expr(&self, expr: &LogicalExpr) -> Result<Object, SaturdayResult> {
+  fn visit_logical_expr(&self, _: &Expr, expr: &LogicalExpr) -> Result<Object, SaturdayResult> {
     let left = self.evaluate(&expr.left)?;
 
     if expr.operator.is(TokenType::Or) {
@@ -230,7 +230,7 @@ impl ExprVisitor<Object> for Interpreter {
     self.evaluate(&expr.right)
   }
 
-  fn visit_unary_expr(&self, expr: &UnaryExpr) -> Result<Object, SaturdayResult> {
+  fn visit_unary_expr(&self, _: &Expr, expr: &UnaryExpr) -> Result<Object, SaturdayResult> {
     let right = self.evaluate(&expr.right)?;
     match expr.operator.token_type() {
       TokenType::Minus => match right {
@@ -245,7 +245,7 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_variable_expr(&self, expr: &VariableExpr) -> Result<Object, SaturdayResult> {
+  fn visit_variable_expr(&self, _: &Expr, expr: &VariableExpr) -> Result<Object, SaturdayResult> {
     self.environment.borrow().borrow().get(&expr.name)
   }
 }
