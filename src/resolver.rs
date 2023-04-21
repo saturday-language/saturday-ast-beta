@@ -11,6 +11,8 @@ use crate::stmt::{
 use crate::token::Token;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::Deref;
+use std::rc::Rc;
 
 struct Resolver {
   interpreter: Interpreter,
@@ -18,27 +20,29 @@ struct Resolver {
 }
 
 impl Resolver {
+  /*
   pub fn new(interpreter: Interpreter) -> Self {
     Self {
       interpreter,
       scopes: RefCell::new(Vec::new()),
     }
   }
+   */
 
-  fn resolve(&self, statements: &[Stmt]) -> Result<(), SaturdayResult> {
-    for statement in statements {
+  fn resolve(&self, statements: &Rc<Vec<Rc<Stmt>>>) -> Result<(), SaturdayResult> {
+    for statement in statements.deref() {
       self.resolve_stmt(statement)?;
     }
 
     Ok(())
   }
 
-  fn resolve_stmt(&self, stmt: &Stmt) -> Result<(), SaturdayResult> {
-    stmt.accept(self)
+  fn resolve_stmt(&self, stmt: &Rc<Stmt>) -> Result<(), SaturdayResult> {
+    stmt.accept(stmt, self)
   }
 
-  fn resolve_expr(&self, expr: &Expr) -> Result<(), SaturdayResult> {
-    expr.accept(self)
+  fn resolve_expr(&self, expr: &Rc<Expr>) -> Result<(), SaturdayResult> {
+    expr.accept(expr, self)
   }
 
   fn begin_scope(&self) {
@@ -77,7 +81,7 @@ impl Resolver {
       .insert(name.as_string(), true);
   }
 
-  fn resolve_local(&self, expr: &Expr, name: &Token) {
+  fn resolve_local(&self, expr: &Rc<Expr>, name: &Token) {
     for (scope, map) in self.scopes.borrow().iter().rev().enumerate() {
       if map.borrow().contains_key(&name.as_string()) {
         self.interpreter.resolve(expr, scope);
@@ -88,38 +92,42 @@ impl Resolver {
 }
 
 impl StmtVisitor<()> for Resolver {
-  fn visit_block_stmt(&self, _: &Stmt, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
+  fn visit_block_stmt(&self, _: &Rc<Stmt>, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
     self.begin_scope();
     self.resolve(&stmt.statements)?;
     self.end_scope();
     Ok(())
   }
 
-  fn visit_break_stmt(&self, _: &Stmt, expr: &BreakStmt) -> Result<(), SaturdayResult> {
+  fn visit_break_stmt(&self, _: &Rc<Stmt>, _expr: &BreakStmt) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_expression_stmt(&self, _: &Stmt, expr: &ExpressionStmt) -> Result<(), SaturdayResult> {
+  fn visit_expression_stmt(
+    &self,
+    _: &Rc<Stmt>,
+    _expr: &ExpressionStmt,
+  ) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_function_stmt(&self, _: &Stmt, expr: &FunctionStmt) -> Result<(), SaturdayResult> {
+  fn visit_function_stmt(&self, _: &Rc<Stmt>, _expr: &FunctionStmt) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_if_stmt(&self, _: &Stmt, expr: &IfStmt) -> Result<(), SaturdayResult> {
+  fn visit_if_stmt(&self, _: &Rc<Stmt>, _expr: &IfStmt) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_print_stmt(&self, _: &Stmt, expr: &PrintStmt) -> Result<(), SaturdayResult> {
+  fn visit_print_stmt(&self, _: &Rc<Stmt>, _expr: &PrintStmt) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_return_stmt(&self, _: &Stmt, expr: &ReturnStmt) -> Result<(), SaturdayResult> {
+  fn visit_return_stmt(&self, _: &Rc<Stmt>, _expr: &ReturnStmt) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_def_stmt(&self, _: &Stmt, stmt: &DefStmt) -> Result<(), SaturdayResult> {
+  fn visit_def_stmt(&self, _: &Rc<Stmt>, stmt: &DefStmt) -> Result<(), SaturdayResult> {
     self.declare(&stmt.name);
     if let Some(init) = &stmt.initializer {
       self.resolve_expr(&init)?;
@@ -129,41 +137,45 @@ impl StmtVisitor<()> for Resolver {
     Ok(())
   }
 
-  fn visit_while_stmt(&self, _: &Stmt, expr: &WhileStmt) -> Result<(), SaturdayResult> {
+  fn visit_while_stmt(&self, _: &Rc<Stmt>, _expr: &WhileStmt) -> Result<(), SaturdayResult> {
     todo!()
   }
 }
 
 impl ExprVisitor<()> for Resolver {
-  fn visit_assign_expr(&self, _: &Expr, expr: &AssignExpr) -> Result<(), SaturdayResult> {
+  fn visit_assign_expr(&self, _: &Rc<Expr>, _expr: &AssignExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_binary_expr(&self, _: &Expr, expr: &BinaryExpr) -> Result<(), SaturdayResult> {
+  fn visit_binary_expr(&self, _: &Rc<Expr>, _expr: &BinaryExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_call_expr(&self, _: &Expr, expr: &CallExpr) -> Result<(), SaturdayResult> {
+  fn visit_call_expr(&self, _: &Rc<Expr>, _expr: &CallExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_grouping_expr(&self, _: &Expr, expr: &GroupingExpr) -> Result<(), SaturdayResult> {
+  fn visit_grouping_expr(&self, _: &Rc<Expr>, _expr: &GroupingExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_literal_expr(&self, _: &Expr, expr: &LiteralExpr) -> Result<(), SaturdayResult> {
+  fn visit_literal_expr(&self, _: &Rc<Expr>, _expr: &LiteralExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_logical_expr(&self, _: &Expr, expr: &LogicalExpr) -> Result<(), SaturdayResult> {
+  fn visit_logical_expr(&self, _: &Rc<Expr>, _expr: &LogicalExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_unary_expr(&self, _: &Expr, expr: &UnaryExpr) -> Result<(), SaturdayResult> {
+  fn visit_unary_expr(&self, _: &Rc<Expr>, _expr: &UnaryExpr) -> Result<(), SaturdayResult> {
     todo!()
   }
 
-  fn visit_variable_expr(&self, wrapper: &Expr, expr: &VariableExpr) -> Result<(), SaturdayResult> {
+  fn visit_variable_expr(
+    &self,
+    wrapper: &Rc<Expr>,
+    expr: &VariableExpr,
+  ) -> Result<(), SaturdayResult> {
     if !self.scopes.borrow().is_empty()
       && !self
         .scopes

@@ -11,21 +11,23 @@ use crate::stmt::{
 };
 use crate::token_type::TokenType;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct Interpreter {
   pub globals: Rc<RefCell<Environment>>,
   environment: RefCell<Rc<RefCell<Environment>>>,
   nest: RefCell<usize>,
+  locals: RefCell<HashMap<Expr, usize>>,
 }
 
 impl StmtVisitor<()> for Interpreter {
-  fn visit_block_stmt(&self, _: &Stmt, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
+  fn visit_block_stmt(&self, _: &Rc<Stmt>, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
     let e = Environment::new_with_enclosing(self.environment.borrow().clone());
     self.execute_block(&stmt.statements, e)
   }
 
-  fn visit_break_stmt(&self, _: &Stmt, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
+  fn visit_break_stmt(&self, _: &Rc<Stmt>, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
     if *self.nest.borrow() == 0 {
       Err(SaturdayResult::runtime_error(
         &stmt.token,
@@ -36,12 +38,16 @@ impl StmtVisitor<()> for Interpreter {
     }
   }
 
-  fn visit_expression_stmt(&self, _: &Stmt, stmt: &ExpressionStmt) -> Result<(), SaturdayResult> {
+  fn visit_expression_stmt(
+    &self,
+    _: &Rc<Stmt>,
+    stmt: &ExpressionStmt,
+  ) -> Result<(), SaturdayResult> {
     self.evaluate(&stmt.expression)?;
     Ok(())
   }
 
-  fn visit_function_stmt(&self, _: &Stmt, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
+  fn visit_function_stmt(&self, _: &Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
     let function = SaturdayFunction::new(&Rc::new(stmt), &self.environment.borrow());
     self.environment.borrow().borrow_mut().define(
       &stmt.name.as_string(),
@@ -52,7 +58,7 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_if_stmt(&self, _: &Stmt, stmt: &IfStmt) -> Result<(), SaturdayResult> {
+  fn visit_if_stmt(&self, _: &Rc<Stmt>, stmt: &IfStmt) -> Result<(), SaturdayResult> {
     if self.is_truthy(&self.evaluate(&stmt.condition)?) {
       self.execute(&stmt.then_branch)
     } else if let Some(else_branch) = &stmt.else_branch {
@@ -62,13 +68,17 @@ impl StmtVisitor<()> for Interpreter {
     }
   }
 
-  fn visit_print_stmt(&self, _: &Stmt, stmt: &PrintStmt) -> Result<(), SaturdayResult> {
+  fn visit_print_stmt(&self, _: &Rc<Stmt>, stmt: &PrintStmt) -> Result<(), SaturdayResult> {
     let value = self.evaluate(&stmt.expression)?;
     println!("{value}");
     Ok(())
   }
 
-  fn visit_return_stmt(&self, _: &Stmt, stmt: &ReturnStmt) -> Result<(), SaturdayResult> {
+  fn visit_return_stmt(
+    &self,
+    _wrapper: &Rc<Stmt>,
+    stmt: &ReturnStmt,
+  ) -> Result<(), SaturdayResult> {
     if let Some(value) = &stmt.value {
       Err(SaturdayResult::return_value(self.evaluate(value)?))
     } else {
@@ -76,7 +86,7 @@ impl StmtVisitor<()> for Interpreter {
     }
   }
 
-  fn visit_def_stmt(&self, _: &Stmt, stmt: &DefStmt) -> Result<(), SaturdayResult> {
+  fn visit_def_stmt(&self, _: &Rc<Stmt>, stmt: &DefStmt) -> Result<(), SaturdayResult> {
     let value = if let Some(initializer) = &stmt.initializer {
       self.evaluate(initializer)?
     } else {
@@ -91,7 +101,7 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_while_stmt(&self, _: &Stmt, expr: &WhileStmt) -> Result<(), SaturdayResult> {
+  fn visit_while_stmt(&self, _: &Rc<Stmt>, expr: &WhileStmt) -> Result<(), SaturdayResult> {
     *self.nest.borrow_mut() += 1;
     while self.is_truthy(&self.evaluate(&expr.condition)?) {
       match self.execute(&expr.body) {
@@ -107,7 +117,7 @@ impl StmtVisitor<()> for Interpreter {
 }
 
 impl ExprVisitor<Object> for Interpreter {
-  fn visit_assign_expr(&self, _: &Expr, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
+  fn visit_assign_expr(&self, _: &Rc<Expr>, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
     let value = self.evaluate(&expr.value)?;
     self
       .environment
@@ -117,7 +127,7 @@ impl ExprVisitor<Object> for Interpreter {
     Ok(value)
   }
 
-  fn visit_binary_expr(&self, _: &Expr, expr: &BinaryExpr) -> Result<Object, SaturdayResult> {
+  fn visit_binary_expr(&self, _: &Rc<Expr>, expr: &BinaryExpr) -> Result<Object, SaturdayResult> {
     let left = self.evaluate(&expr.left)?;
     let right = self.evaluate(&expr.right)?;
     let op = expr.operator.token_type();
@@ -180,7 +190,7 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_call_expr(&self, _: &Expr, expr: &CallExpr) -> Result<Object, SaturdayResult> {
+  fn visit_call_expr(&self, _: &Rc<Expr>, expr: &CallExpr) -> Result<Object, SaturdayResult> {
     let callee = self.evaluate(&expr.callee)?;
     let mut arguments = Vec::new();
     for argument in &expr.arguments {
@@ -208,15 +218,19 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_grouping_expr(&self, _: &Expr, expr: &GroupingExpr) -> Result<Object, SaturdayResult> {
+  fn visit_grouping_expr(
+    &self,
+    _: &Rc<Expr>,
+    expr: &GroupingExpr,
+  ) -> Result<Object, SaturdayResult> {
     self.evaluate(&expr.expression)
   }
 
-  fn visit_literal_expr(&self, _: &Expr, expr: &LiteralExpr) -> Result<Object, SaturdayResult> {
+  fn visit_literal_expr(&self, _: &Rc<Expr>, expr: &LiteralExpr) -> Result<Object, SaturdayResult> {
     Ok(expr.value.clone().unwrap())
   }
 
-  fn visit_logical_expr(&self, _: &Expr, expr: &LogicalExpr) -> Result<Object, SaturdayResult> {
+  fn visit_logical_expr(&self, _: &Rc<Expr>, expr: &LogicalExpr) -> Result<Object, SaturdayResult> {
     let left = self.evaluate(&expr.left)?;
 
     if expr.operator.is(TokenType::Or) {
@@ -230,7 +244,7 @@ impl ExprVisitor<Object> for Interpreter {
     self.evaluate(&expr.right)
   }
 
-  fn visit_unary_expr(&self, _: &Expr, expr: &UnaryExpr) -> Result<Object, SaturdayResult> {
+  fn visit_unary_expr(&self, _: &Rc<Expr>, expr: &UnaryExpr) -> Result<Object, SaturdayResult> {
     let right = self.evaluate(&expr.right)?;
     match expr.operator.token_type() {
       TokenType::Minus => match right {
@@ -245,7 +259,11 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_variable_expr(&self, _: &Expr, expr: &VariableExpr) -> Result<Object, SaturdayResult> {
+  fn visit_variable_expr(
+    &self,
+    _: &Rc<Expr>,
+    expr: &VariableExpr,
+  ) -> Result<Object, SaturdayResult> {
     self.environment.borrow().borrow().get(&expr.name)
   }
 }
@@ -264,20 +282,21 @@ impl Interpreter {
       globals: Rc::clone(&globals),
       environment: RefCell::new(Rc::clone(&globals)),
       nest: RefCell::new(0),
+      locals: RefCell::new(HashMap::new()),
     }
   }
 
-  fn evaluate(&self, expr: &Expr) -> Result<Object, SaturdayResult> {
-    expr.accept(self)
+  fn evaluate(&self, expr: &Rc<Expr>) -> Result<Object, SaturdayResult> {
+    expr.accept(expr, self)
   }
 
-  fn execute(&self, stmt: &Stmt) -> Result<(), SaturdayResult> {
-    stmt.accept(self)
+  fn execute(&self, stmt: &Rc<Stmt>) -> Result<(), SaturdayResult> {
+    stmt.accept(stmt, self)
   }
 
   pub fn execute_block(
     &self,
-    statements: &[Stmt],
+    statements: &Rc<Vec<Rc<Stmt>>>,
     environment: Environment,
   ) -> Result<(), SaturdayResult> {
     let previous = self.environment.replace(Rc::new(RefCell::new(environment)));
@@ -293,7 +312,7 @@ impl Interpreter {
     !matches!(object, Object::Nil | Object::Bool(false))
   }
 
-  pub fn interpreter(&self, statements: &[Stmt]) -> bool {
+  pub fn interpreter(&self, statements: &[Rc<Stmt>]) -> bool {
     let mut success = true;
     *self.nest.borrow_mut() = 0;
     for statement in statements {
@@ -308,6 +327,10 @@ impl Interpreter {
 
   pub fn print_environment(&self) {
     println!("{:?}", self.environment.borrow().borrow());
+  }
+
+  pub fn resolve(&self, expr: &Rc<Expr>, depth: usize) {
+    // self.locals.borrow_mut().insert(expr, depth);
   }
 }
 

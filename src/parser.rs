@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
   }
 
   /// # 解析方法，调用expression解析tokens生成表达式
-  pub fn parse(&mut self) -> Result<Vec<Stmt>, SaturdayResult> {
+  pub fn parse(&mut self) -> Result<Vec<Rc<Stmt>>, SaturdayResult> {
     let mut statements = Vec::new();
     while !self.is_at_end() {
       statements.push(self.declaration()?);
@@ -41,7 +41,7 @@ impl<'a> Parser<'a> {
     Ok(statements)
   }
 
-  fn declaration(&mut self) -> Result<Stmt, SaturdayResult> {
+  fn declaration(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
     let result = if self.is_match(&[TokenType::Fun]) {
       self.function("function")
     } else if self.is_match(&[TokenType::Def]) {
@@ -57,10 +57,10 @@ impl<'a> Parser<'a> {
     result
   }
 
-  fn def_declaration(&mut self) -> Result<Stmt, SaturdayResult> {
+  fn def_declaration(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
     let name = self.consume(TokenType::Identifier, "Expect variable name.")?;
     let initializer = if self.is_match(&[TokenType::Assign]) {
-      Some(self.expression()?)
+      Some(Rc::new(self.expression()?))
     } else {
       None
     };
@@ -69,11 +69,11 @@ impl<'a> Parser<'a> {
       TokenType::SemiColon,
       "Expect ';' after variable declaration",
     )?;
-    Ok(Stmt::Def(DefStmt { name, initializer }))
+    Ok(Rc::new(Stmt::Def(DefStmt { name, initializer })))
   }
 
   fn while_statement(&mut self) -> Result<Stmt, SaturdayResult> {
-    let condition = self.expression()?;
+    let condition = Rc::new(self.expression()?);
     if !self.peek().is(TokenType::LeftBrace) {
       return Err(SaturdayResult::parse_error(
         self.peek(),
@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
       ));
     }
 
-    let body = Box::new(self.statement()?);
+    let body = self.statement()?;
     Ok(Stmt::While(WhileStmt { condition, body }))
   }
 
@@ -89,11 +89,11 @@ impl<'a> Parser<'a> {
     self.assignment()
   }
 
-  fn statement(&mut self) -> Result<Stmt, SaturdayResult> {
+  fn statement(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
     if self.is_match(&[TokenType::Break]) {
       let token = self.peek().dup();
       self.consume(TokenType::SemiColon, "expect ';' after break statement.")?;
-      return Ok(Stmt::Break(BreakStmt { token }));
+      return Ok(Rc::new(Stmt::Break(BreakStmt { token })));
     }
 
     if self.is_match(&[TokenType::For]) {
@@ -101,31 +101,31 @@ impl<'a> Parser<'a> {
     }
 
     if self.is_match(&[TokenType::If]) {
-      return self.if_statement();
+      return Ok(Rc::new(self.if_statement()?));
     }
 
     if self.is_match(&[TokenType::Print]) {
-      return self.print_statement();
+      return Ok(Rc::new(self.print_statement()?));
     }
 
     if self.is_match(&[TokenType::Return]) {
-      return self.return_statement();
+      return Ok(Rc::new(self.return_statement()?));
     }
 
     if self.is_match(&[TokenType::While]) {
-      return self.while_statement();
+      return Ok(Rc::new(self.while_statement()?));
     }
 
     if self.is_match(&[TokenType::LeftBrace]) {
-      return Ok(Stmt::Block(BlockStmt {
-        statements: self.block()?,
-      }));
+      return Ok(Rc::new(Stmt::Block(BlockStmt {
+        statements: Rc::new(self.block()?),
+      })));
     }
 
     self.expression_statement()
   }
 
-  fn for_statement(&mut self) -> Result<Stmt, SaturdayResult> {
+  fn for_statement(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
     let initializer = if self.is_match(&[TokenType::SemiColon]) {
       None
     } else if self.is_match(&[TokenType::Def]) {
@@ -150,28 +150,33 @@ impl<'a> Parser<'a> {
     let mut body = self.statement()?;
     // 执行完逻辑后将条件值增加
     if let Some(incr) = increment {
-      body = Stmt::Block(BlockStmt {
-        statements: vec![body, Stmt::Expression(ExpressionStmt { expression: incr })],
-      });
+      body = Rc::new(Stmt::Block(BlockStmt {
+        statements: Rc::new(vec![
+          body,
+          Rc::new(Stmt::Expression(ExpressionStmt {
+            expression: Rc::new(incr),
+          })),
+        ]),
+      }));
     }
 
     // 将for循环转换成while
-    body = Stmt::While(WhileStmt {
+    body = Rc::new(Stmt::While(WhileStmt {
       condition: if let Some(cond) = condition {
-        cond
+        Rc::new(cond)
       } else {
-        Expr::Literal(LiteralExpr {
+        Rc::new(Expr::Literal(LiteralExpr {
           value: Some(Object::Bool(true)),
-        })
+        }))
       },
-      body: Box::new(body),
-    });
+      body,
+    }));
 
     // 在准备一个block将初始化表达式包裹进去
     if let Some(init) = initializer {
-      body = Stmt::Block(BlockStmt {
-        statements: vec![init, body],
-      });
+      body = Rc::new(Stmt::Block(BlockStmt {
+        statements: Rc::new(vec![init, body]),
+      }));
     }
 
     Ok(body)
@@ -179,7 +184,7 @@ impl<'a> Parser<'a> {
 
   fn if_statement(&mut self) -> Result<Stmt, SaturdayResult> {
     // 实现condition不带括号且必须有{的条件语句
-    let condition = self.expression()?;
+    let condition = Rc::new(self.expression()?);
     if !self.peek().is(TokenType::LeftBrace) {
       return Err(SaturdayResult::parse_error(
         self.peek(),
@@ -187,7 +192,7 @@ impl<'a> Parser<'a> {
       ));
     }
 
-    let then_branch = Box::new(self.statement()?);
+    let then_branch = self.statement()?;
     let else_branch = if self.is_match(&[TokenType::Else]) {
       if !self.peek().is(TokenType::LeftBrace) {
         return Err(SaturdayResult::parse_error(
@@ -196,7 +201,7 @@ impl<'a> Parser<'a> {
         ));
       }
 
-      Some(Box::new(self.statement()?))
+      Some(self.statement()?)
     } else {
       None
     };
@@ -209,7 +214,7 @@ impl<'a> Parser<'a> {
   }
 
   fn print_statement(&mut self) -> Result<Stmt, SaturdayResult> {
-    let value = self.expression()?;
+    let value = Rc::new(self.expression()?);
     self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
     Ok(Stmt::Print(PrintStmt { expression: value }))
   }
@@ -219,20 +224,22 @@ impl<'a> Parser<'a> {
     let value = if self.check(TokenType::SemiColon) {
       None
     } else {
-      Some(self.expression()?)
+      Some(Rc::new(self.expression()?))
     };
 
     self.consume(TokenType::SemiColon, "Expect ';' after return value.")?;
     Ok(Stmt::Return(ReturnStmt { keyword, value }))
   }
 
-  fn expression_statement(&mut self) -> Result<Stmt, SaturdayResult> {
-    let expr = self.expression()?;
+  fn expression_statement(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
+    let expr = Rc::new(self.expression()?);
     self.consume(TokenType::SemiColon, "Expect ';' after value.")?;
-    Ok(Stmt::Expression(ExpressionStmt { expression: expr }))
+    Ok(Rc::new(Stmt::Expression(ExpressionStmt {
+      expression: expr,
+    })))
   }
 
-  fn function(&mut self, kind: &str) -> Result<Stmt, SaturdayResult> {
+  fn function(&mut self, kind: &str) -> Result<Rc<Stmt>, SaturdayResult> {
     let name = self.consume(TokenType::Identifier, &format!("Expect {kind} name"))?;
     self.consume(
       TokenType::LeftParen,
@@ -259,14 +266,14 @@ impl<'a> Parser<'a> {
       &format!("Expect '{{' before {kind} body"),
     )?;
     let body = Rc::new(self.block()?);
-    Ok(Stmt::Function(FunctionStmt {
+    Ok(Rc::new(Stmt::Function(FunctionStmt {
       name,
       params: Rc::new(params),
       body,
-    }))
+    })))
   }
 
-  fn block(&mut self) -> Result<Vec<Stmt>, SaturdayResult> {
+  fn block(&mut self) -> Result<Vec<Rc<Stmt>>, SaturdayResult> {
     let mut statements = Vec::new();
     while !self.check(TokenType::RightBrace) && !self.is_at_end() {
       statements.push(self.declaration()?);
@@ -286,7 +293,7 @@ impl<'a> Parser<'a> {
       if let Expr::Variable(expr) = expr {
         return Ok(Expr::Assign(AssignExpr {
           name: expr.name.dup(),
-          value: Box::new(value),
+          value: Rc::new(value),
         }));
       }
 
@@ -301,9 +308,9 @@ impl<'a> Parser<'a> {
 
     while self.is_match(&[TokenType::Or]) {
       let operator = self.previous().dup();
-      let right = Box::new(self.and()?);
+      let right = Rc::new(self.and()?);
       expr = Expr::Logical(LogicalExpr {
-        left: Box::new(expr),
+        left: Rc::new(expr),
         operator,
         right,
       });
@@ -317,9 +324,9 @@ impl<'a> Parser<'a> {
 
     while self.is_match(&[TokenType::And]) {
       let operator = self.previous().dup();
-      let right = Box::new(self.equality()?);
+      let right = Rc::new(self.equality()?);
       expr = Expr::Logical(LogicalExpr {
-        left: Box::new(expr),
+        left: Rc::new(expr),
         operator,
         right,
       });
@@ -335,9 +342,9 @@ impl<'a> Parser<'a> {
       let operator = self.previous().dup();
       let right = self.comparison()?;
       expr = Expr::Binary(BinaryExpr {
-        left: Box::new(expr),
+        left: Rc::new(expr),
         operator,
-        right: Box::new(right),
+        right: Rc::new(right),
       });
     }
 
@@ -355,9 +362,9 @@ impl<'a> Parser<'a> {
       let operator = self.previous().dup();
       let right = self.term()?;
       expr = Expr::Binary(BinaryExpr {
-        left: Box::new(expr),
+        left: Rc::new(expr),
         operator,
-        right: Box::new(right),
+        right: Rc::new(right),
       });
     }
 
@@ -370,9 +377,9 @@ impl<'a> Parser<'a> {
       let operator = self.previous().dup();
       let right = self.factor()?;
       expr = Expr::Binary(BinaryExpr {
-        left: Box::new(expr),
+        left: Rc::new(expr),
         operator,
-        right: Box::new(right),
+        right: Rc::new(right),
       });
     }
 
@@ -385,9 +392,9 @@ impl<'a> Parser<'a> {
       let operator = self.previous().dup();
       let right = self.unary()?;
       expr = Expr::Binary(BinaryExpr {
-        left: Box::new(expr),
+        left: Rc::new(expr),
         operator,
-        right: Box::new(right),
+        right: Rc::new(right),
       });
     }
 
@@ -400,7 +407,7 @@ impl<'a> Parser<'a> {
       let right = self.unary()?;
       return Ok(Expr::Unary(UnaryExpr {
         operator,
-        right: Box::new(right),
+        right: Rc::new(right),
       }));
     }
 
@@ -424,14 +431,14 @@ impl<'a> Parser<'a> {
   fn finish_call(&mut self, callee: &Rc<Expr>) -> Result<Expr, SaturdayResult> {
     let mut arguments = Vec::new();
     if !self.check(TokenType::RightParen) {
-      arguments.push(self.expression()?);
+      arguments.push(Rc::new(self.expression()?));
       while self.is_match(&[TokenType::Comma]) {
         if arguments.len() >= 255 && !self.had_error {
           let peek = self.peek().dup();
           self.error(&peek, "Can't have more than 255 arguments.");
           self.had_error = true;
         } else {
-          arguments.push(self.expression()?);
+          arguments.push(Rc::new(self.expression()?));
         }
       }
     }
@@ -477,7 +484,7 @@ impl<'a> Parser<'a> {
       let expr = self.expression()?;
       self.consume(TokenType::RightParen, "Expect ')' after expression")?;
       return Ok(Expr::Grouping(GroupingExpr {
-        expression: Box::new(expr),
+        expression: Rc::new(expr),
       }));
     }
 
