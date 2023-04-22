@@ -9,6 +9,7 @@ use crate::stmt::{
   BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
   StmtVisitor, WhileStmt,
 };
+use crate::token::Token;
 use crate::token_type::TokenType;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -257,10 +258,11 @@ impl ExprVisitor<Object> for Interpreter {
 
   fn visit_variable_expr(
     &self,
-    _: Rc<Expr>,
+    wrapper: Rc<Expr>,
     expr: &VariableExpr,
   ) -> Result<Object, SaturdayResult> {
-    self.environment.borrow().borrow().get(&expr.name)
+    // self.environment.borrow().borrow().get(&expr.name)
+    self.look_up_variable(&expr.name, wrapper)
   }
 }
 
@@ -327,6 +329,18 @@ impl Interpreter {
 
   pub fn resolve(&self, expr: Rc<Expr>, depth: usize) {
     self.locals.borrow_mut().insert(expr, depth);
+  }
+
+  pub fn look_up_variable(&self, name: &Token, expr: Rc<Expr>) -> Result<Object, SaturdayResult> {
+    if let Some(distance) = self.locals.borrow().get(&expr) {
+      self
+        .environment
+        .borrow()
+        .borrow()
+        .get_at(*distance, &name.as_string())
+    } else {
+      self.globals.borrow().get(name)
+    }
   }
 }
 

@@ -31,6 +31,14 @@ impl Environment {
     self.values.insert(name.to_string(), value);
   }
 
+  pub fn get_at(&self, distance: usize, name: &str) -> Result<Object, SaturdayResult> {
+    if distance == 0 {
+      Ok(self.values.get(name).unwrap().clone())
+    } else {
+      self.get_at(distance - 1, name)
+    }
+  }
+
   pub fn get(&self, name: &Token) -> Result<Object, SaturdayResult> {
     if let Some(object) = self.values.get(&name.as_string()) {
       Ok(object.clone())

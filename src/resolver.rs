@@ -111,7 +111,7 @@ impl StmtVisitor<()> for Resolver {
   }
 
   fn visit_break_stmt(&self, _: Rc<Stmt>, _expr: &BreakStmt) -> Result<(), SaturdayResult> {
-    todo!()
+    Ok(())
   }
 
   fn visit_expression_stmt(
@@ -127,7 +127,7 @@ impl StmtVisitor<()> for Resolver {
     self.declare(&stmt.name);
     self.define(&stmt.name);
 
-    self.resolve_function(stmt);
+    self.resolve_function(stmt)?;
     Ok(())
   }
 
