@@ -22,12 +22,12 @@ pub struct Interpreter {
 }
 
 impl StmtVisitor<()> for Interpreter {
-  fn visit_block_stmt(&self, _: &Rc<Stmt>, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
+  fn visit_block_stmt(&self, _: Rc<Stmt>, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
     let e = Environment::new_with_enclosing(self.environment.borrow().clone());
     self.execute_block(&stmt.statements, e)
   }
 
-  fn visit_break_stmt(&self, _: &Rc<Stmt>, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
+  fn visit_break_stmt(&self, _: Rc<Stmt>, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
     if *self.nest.borrow() == 0 {
       Err(SaturdayResult::runtime_error(
         &stmt.token,
@@ -40,14 +40,14 @@ impl StmtVisitor<()> for Interpreter {
 
   fn visit_expression_stmt(
     &self,
-    _: &Rc<Stmt>,
+    _: Rc<Stmt>,
     stmt: &ExpressionStmt,
   ) -> Result<(), SaturdayResult> {
-    self.evaluate(&stmt.expression)?;
+    self.evaluate(stmt.expression.clone())?;
     Ok(())
   }
 
-  fn visit_function_stmt(&self, _: &Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
+  fn visit_function_stmt(&self, _: Rc<Stmt>, stmt: &FunctionStmt) -> Result<(), SaturdayResult> {
     let function = SaturdayFunction::new(&Rc::new(stmt), &self.environment.borrow());
     self.environment.borrow().borrow_mut().define(
       &stmt.name.as_string(),
@@ -58,36 +58,36 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_if_stmt(&self, _: &Rc<Stmt>, stmt: &IfStmt) -> Result<(), SaturdayResult> {
-    if self.is_truthy(&self.evaluate(&stmt.condition)?) {
-      self.execute(&stmt.then_branch)
-    } else if let Some(else_branch) = &stmt.else_branch {
+  fn visit_if_stmt(&self, _: Rc<Stmt>, stmt: &IfStmt) -> Result<(), SaturdayResult> {
+    if self.is_truthy(&self.evaluate(stmt.condition.clone())?) {
+      self.execute(stmt.then_branch.clone())
+    } else if let Some(else_branch) = stmt.else_branch.clone() {
       self.execute(else_branch)
     } else {
       Ok(())
     }
   }
 
-  fn visit_print_stmt(&self, _: &Rc<Stmt>, stmt: &PrintStmt) -> Result<(), SaturdayResult> {
-    let value = self.evaluate(&stmt.expression)?;
+  fn visit_print_stmt(&self, _: Rc<Stmt>, stmt: &PrintStmt) -> Result<(), SaturdayResult> {
+    let value = self.evaluate(stmt.expression.clone())?;
     println!("{value}");
     Ok(())
   }
 
   fn visit_return_stmt(
     &self,
-    _wrapper: &Rc<Stmt>,
+    _wrapper: Rc<Stmt>,
     stmt: &ReturnStmt,
   ) -> Result<(), SaturdayResult> {
-    if let Some(value) = &stmt.value {
+    if let Some(value) = stmt.value.clone() {
       Err(SaturdayResult::return_value(self.evaluate(value)?))
     } else {
       Err(SaturdayResult::return_value(Object::Nil))
     }
   }
 
-  fn visit_def_stmt(&self, _: &Rc<Stmt>, stmt: &DefStmt) -> Result<(), SaturdayResult> {
-    let value = if let Some(initializer) = &stmt.initializer {
+  fn visit_def_stmt(&self, _: Rc<Stmt>, stmt: &DefStmt) -> Result<(), SaturdayResult> {
+    let value = if let Some(initializer) = stmt.initializer.clone() {
       self.evaluate(initializer)?
     } else {
       Object::Nil
@@ -101,10 +101,10 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_while_stmt(&self, _: &Rc<Stmt>, expr: &WhileStmt) -> Result<(), SaturdayResult> {
+  fn visit_while_stmt(&self, _: Rc<Stmt>, stmt: &WhileStmt) -> Result<(), SaturdayResult> {
     *self.nest.borrow_mut() += 1;
-    while self.is_truthy(&self.evaluate(&expr.condition)?) {
-      match self.execute(&expr.body) {
+    while self.is_truthy(&self.evaluate(stmt.condition.clone())?) {
+      match self.execute(stmt.body.clone()) {
         Err(SaturdayResult::Break) => break,
         Err(e) => return Err(e),
         Ok(_) => {}
@@ -117,8 +117,8 @@ impl StmtVisitor<()> for Interpreter {
 }
 
 impl ExprVisitor<Object> for Interpreter {
-  fn visit_assign_expr(&self, _: &Rc<Expr>, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
-    let value = self.evaluate(&expr.value)?;
+  fn visit_assign_expr(&self, _: Rc<Expr>, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
+    let value = self.evaluate(expr.value.clone())?;
     self
       .environment
       .borrow()
@@ -127,9 +127,9 @@ impl ExprVisitor<Object> for Interpreter {
     Ok(value)
   }
 
-  fn visit_binary_expr(&self, _: &Rc<Expr>, expr: &BinaryExpr) -> Result<Object, SaturdayResult> {
-    let left = self.evaluate(&expr.left)?;
-    let right = self.evaluate(&expr.right)?;
+  fn visit_binary_expr(&self, _: Rc<Expr>, expr: &BinaryExpr) -> Result<Object, SaturdayResult> {
+    let left = self.evaluate(expr.left.clone())?;
+    let right = self.evaluate(expr.right.clone())?;
     let op = expr.operator.token_type();
 
     let result = match (left, right) {
@@ -190,10 +190,10 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
-  fn visit_call_expr(&self, _: &Rc<Expr>, expr: &CallExpr) -> Result<Object, SaturdayResult> {
-    let callee = self.evaluate(&expr.callee)?;
+  fn visit_call_expr(&self, _: Rc<Expr>, expr: &CallExpr) -> Result<Object, SaturdayResult> {
+    let callee = self.evaluate(expr.callee.clone())?;
     let mut arguments = Vec::new();
-    for argument in &expr.arguments {
+    for argument in expr.arguments.clone() {
       arguments.push(self.evaluate(argument)?);
     }
 
@@ -220,18 +220,18 @@ impl ExprVisitor<Object> for Interpreter {
 
   fn visit_grouping_expr(
     &self,
-    _: &Rc<Expr>,
+    _: Rc<Expr>,
     expr: &GroupingExpr,
   ) -> Result<Object, SaturdayResult> {
-    self.evaluate(&expr.expression)
+    self.evaluate(expr.expression.clone())
   }
 
-  fn visit_literal_expr(&self, _: &Rc<Expr>, expr: &LiteralExpr) -> Result<Object, SaturdayResult> {
+  fn visit_literal_expr(&self, _: Rc<Expr>, expr: &LiteralExpr) -> Result<Object, SaturdayResult> {
     Ok(expr.value.clone().unwrap())
   }
 
-  fn visit_logical_expr(&self, _: &Rc<Expr>, expr: &LogicalExpr) -> Result<Object, SaturdayResult> {
-    let left = self.evaluate(&expr.left)?;
+  fn visit_logical_expr(&self, _: Rc<Expr>, expr: &LogicalExpr) -> Result<Object, SaturdayResult> {
+    let left = self.evaluate(expr.left.clone())?;
 
     if expr.operator.is(TokenType::Or) {
       if self.is_truthy(&left) {
@@ -241,11 +241,11 @@ impl ExprVisitor<Object> for Interpreter {
       return Ok(left);
     }
 
-    self.evaluate(&expr.right)
+    self.evaluate(expr.right.clone())
   }
 
-  fn visit_unary_expr(&self, _: &Rc<Expr>, expr: &UnaryExpr) -> Result<Object, SaturdayResult> {
-    let right = self.evaluate(&expr.right)?;
+  fn visit_unary_expr(&self, _: Rc<Expr>, expr: &UnaryExpr) -> Result<Object, SaturdayResult> {
+    let right = self.evaluate(expr.right.clone())?;
     match expr.operator.token_type() {
       TokenType::Minus => match right {
         Object::Num(n) => Ok(Object::Num(-n)),
@@ -261,7 +261,7 @@ impl ExprVisitor<Object> for Interpreter {
 
   fn visit_variable_expr(
     &self,
-    _: &Rc<Expr>,
+    _: Rc<Expr>,
     expr: &VariableExpr,
   ) -> Result<Object, SaturdayResult> {
     self.environment.borrow().borrow().get(&expr.name)
@@ -286,12 +286,12 @@ impl Interpreter {
     }
   }
 
-  fn evaluate(&self, expr: &Rc<Expr>) -> Result<Object, SaturdayResult> {
-    expr.accept(expr, self)
+  fn evaluate(&self, expr: Rc<Expr>) -> Result<Object, SaturdayResult> {
+    expr.accept(expr.clone(), self)
   }
 
-  fn execute(&self, stmt: &Rc<Stmt>) -> Result<(), SaturdayResult> {
-    stmt.accept(stmt, self)
+  fn execute(&self, stmt: Rc<Stmt>) -> Result<(), SaturdayResult> {
+    stmt.accept(stmt.clone(), self)
   }
 
   pub fn execute_block(
@@ -302,7 +302,7 @@ impl Interpreter {
     let previous = self.environment.replace(Rc::new(RefCell::new(environment)));
     let result = statements
       .iter()
-      .try_for_each(|statement| self.execute(statement));
+      .try_for_each(|statement| self.execute(statement.clone()));
     self.environment.replace(previous);
     result
   }
@@ -316,7 +316,7 @@ impl Interpreter {
     let mut success = true;
     *self.nest.borrow_mut() = 0;
     for statement in statements {
-      if self.execute(statement).is_err() {
+      if self.execute(statement.clone()).is_err() {
         success = false;
         break;
       }
