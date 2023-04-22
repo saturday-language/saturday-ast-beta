@@ -35,7 +35,12 @@ impl Environment {
     if distance == 0 {
       Ok(self.values.get(name).unwrap().clone())
     } else {
-      self.get_at(distance - 1, name)
+      self
+        .enclosing
+        .as_ref()
+        .unwrap()
+        .borrow()
+        .get_at(distance - 1, name)
     }
   }
 
@@ -49,6 +54,25 @@ impl Environment {
         name,
         &format!("Undefined variable '{}'.", name.as_string()),
       ))
+    }
+  }
+
+  pub fn assign_at(
+    &mut self,
+    distance: usize,
+    name: &Token,
+    value: Object,
+  ) -> Result<(), SaturdayResult> {
+    if distance == 0 {
+      self.values.insert(name.as_string(), value);
+      Ok(())
+    } else {
+      self
+        .enclosing
+        .as_ref()
+        .unwrap()
+        .borrow_mut()
+        .assign_at(distance - 1, name, value)
     }
   }
 

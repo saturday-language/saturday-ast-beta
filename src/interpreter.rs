@@ -114,13 +114,25 @@ impl StmtVisitor<()> for Interpreter {
 }
 
 impl ExprVisitor<Object> for Interpreter {
-  fn visit_assign_expr(&self, _: Rc<Expr>, expr: &AssignExpr) -> Result<Object, SaturdayResult> {
+  fn visit_assign_expr(
+    &self,
+    wrapper: Rc<Expr>,
+    expr: &AssignExpr,
+  ) -> Result<Object, SaturdayResult> {
     let value = self.evaluate(expr.value.clone())?;
-    self
-      .environment
-      .borrow()
-      .borrow_mut()
-      .assign(&expr.name, value.clone())?;
+    if let Some(distance) = self.locals.borrow().get(&wrapper) {
+      self
+        .environment
+        .borrow()
+        .borrow_mut()
+        .assign_at(*distance, &expr.name, value.clone())?;
+    } else {
+      self
+        .globals
+        .borrow_mut()
+        .assign(&expr.name, value.clone())?;
+    }
+
     Ok(value)
   }
 

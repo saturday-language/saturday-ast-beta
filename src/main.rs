@@ -3,12 +3,14 @@ extern crate core;
 use std::env::args;
 use std::io;
 use std::io::{stdout, BufRead, Write};
+use std::rc::Rc;
 
 use error::*;
 use scanner::*;
 // use crate::ast_printer::AstPrinter;
 use crate::interpreter::Interpreter;
 use crate::parser::Parser;
+use crate::resolver::Resolver;
 
 mod error;
 mod expr;
@@ -93,7 +95,10 @@ impl Saturday {
     let statements = parser.parse()?;
 
     if parser.success() {
-      self.interpreter.interpreter(&statements);
+      let resolver = Resolver::new(&self.interpreter);
+      let s = Rc::new(statements);
+      resolver.resolve(&Rc::clone(&s))?;
+      self.interpreter.interpreter(&Rc::clone(&s));
     }
 
     Ok(())

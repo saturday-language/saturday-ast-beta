@@ -14,20 +14,20 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 
-struct Resolver {
-  interpreter: Interpreter,
+pub struct Resolver<'a> {
+  interpreter: &'a Interpreter,
   scopes: RefCell<Vec<RefCell<HashMap<String, bool>>>>,
 }
 
-impl Resolver {
-  pub fn new(interpreter: Interpreter) -> Self {
+impl<'a> Resolver<'a> {
+  pub fn new(interpreter: &'a Interpreter) -> Self {
     Self {
       interpreter,
       scopes: RefCell::new(Vec::new()),
     }
   }
 
-  fn resolve(&self, statements: &Rc<Vec<Rc<Stmt>>>) -> Result<(), SaturdayResult> {
+  pub fn resolve(&self, statements: &Rc<Vec<Rc<Stmt>>>) -> Result<(), SaturdayResult> {
     for statement in statements.deref() {
       self.resolve_stmt(statement.clone())?;
     }
@@ -102,7 +102,7 @@ impl Resolver {
   }
 }
 
-impl StmtVisitor<()> for Resolver {
+impl<'a> StmtVisitor<()> for Resolver<'a> {
   fn visit_block_stmt(&self, _: Rc<Stmt>, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
     self.begin_scope();
     self.resolve(&stmt.statements)?;
@@ -171,7 +171,7 @@ impl StmtVisitor<()> for Resolver {
   }
 }
 
-impl ExprVisitor<()> for Resolver {
+impl<'a> ExprVisitor<()> for Resolver<'a> {
   fn visit_assign_expr(&self, wrapper: Rc<Expr>, expr: &AssignExpr) -> Result<(), SaturdayResult> {
     self.resolve_expr(expr.value.clone())?;
     self.resolve_local(wrapper, &expr.name);
@@ -219,15 +219,13 @@ impl ExprVisitor<()> for Resolver {
     expr: &VariableExpr,
   ) -> Result<(), SaturdayResult> {
     if !self.scopes.borrow().is_empty()
-      && !self
+      && self
         .scopes
         .borrow()
         .last()
         .unwrap()
         .borrow()
-        .get(&expr.name.as_string())
-        .copied()
-        .unwrap()
+        .get(&expr.name.as_string()).copied() == Some(false)
     {
       Err(SaturdayResult::runtime_error(
         &expr.name,
