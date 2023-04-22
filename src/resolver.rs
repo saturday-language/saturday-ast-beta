@@ -20,14 +20,12 @@ struct Resolver {
 }
 
 impl Resolver {
-  /*
   pub fn new(interpreter: Interpreter) -> Self {
     Self {
       interpreter,
       scopes: RefCell::new(Vec::new()),
     }
   }
-   */
 
   fn resolve(&self, statements: &Rc<Vec<Rc<Stmt>>>) -> Result<(), SaturdayResult> {
     for statement in statements.deref() {

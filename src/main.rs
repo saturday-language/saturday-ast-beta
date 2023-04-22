@@ -22,7 +22,7 @@ mod environment;
 mod interpreter;
 mod native_functions;
 mod object;
-mod resolver;
+// mod resolver;
 mod saturday_function;
 mod stmt;
 

@@ -83,9 +83,38 @@ fn define_ast(
 
   writeln!(file, "pub enum {base_name} {{")?;
   for t in &tree_types {
-    writeln!(file, "  {}({}),", t.base_class_name, t.class_name)?;
+    writeln!(file, "  {}(Rc<{}>),", t.base_class_name, t.class_name)?;
   }
   writeln!(file, "}}\n")?;
+
+  writeln!(file, "use std::hash::{{Hash, Hasher}};")?;
+  writeln!(file, "impl PartialEq for {} {{", base_name)?;
+  writeln!(file, "    fn eq(&self, other: &Self) -> bool {{")?;
+  writeln!(file, "        match (self, other) {{")?;
+  for t in &tree_types {
+    writeln!(
+      file,
+      "            ({0}::{1}(a), {0}::{1}(b)) => Rc::ptr_eq(a, b),",
+      base_name, t.base_class_name
+    )?;
+  }
+  writeln!(file, "            _ => false,")?;
+  writeln!(file, "        }}")?;
+  writeln!(file, "    }}")?;
+  writeln!(file, "}}\n\n impl Eq for {} {{}}\n", base_name)?;
+
+  writeln!(file, "impl Hash for {} {{", base_name)?;
+  writeln!(file, "    fn hash<H>(&self, hasher: &mut H)")?;
+  writeln!(file, "    where H: Hasher,")?;
+  writeln!(file, "    {{ match self {{")?;
+  for t in &tree_types {
+    writeln!(
+      file,
+      "        {}::{}(a) => {{ hasher.write_usize(Rc::as_ptr(a) as usize); }}",
+      base_name, t.base_class_name
+    )?;
+  }
+  writeln!(file, "        }}\n    }}\n}}\n")?;
 
   writeln!(file, "impl {} {{", base_name)?;
   writeln!(file, "  pub fn accept<T>(&self, wrapper: &Rc<{}>, {}_visitor: &dyn {base_name}Visitor<T>) -> Result<T, SaturdayResult> {{",

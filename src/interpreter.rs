@@ -18,7 +18,7 @@ pub struct Interpreter {
   pub globals: Rc<RefCell<Environment>>,
   environment: RefCell<Rc<RefCell<Environment>>>,
   nest: RefCell<usize>,
-  locals: RefCell<HashMap<Expr, usize>>,
+  locals: RefCell<HashMap<Rc<Expr>, usize>>,
 }
 
 impl StmtVisitor<()> for Interpreter {
@@ -329,8 +329,8 @@ impl Interpreter {
     println!("{:?}", self.environment.borrow().borrow());
   }
 
-  pub fn resolve(&self, expr: &Rc<Expr>, depth: usize) {
-    // self.locals.borrow_mut().insert(expr, depth);
+  pub fn resolve(&self, expr: Rc<Expr>, depth: usize) {
+    self.locals.borrow_mut().insert(expr, depth);
   }
 }
 
