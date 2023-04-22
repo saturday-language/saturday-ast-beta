@@ -74,11 +74,7 @@ impl StmtVisitor<()> for Interpreter {
     Ok(())
   }
 
-  fn visit_return_stmt(
-    &self,
-    _wrapper: Rc<Stmt>,
-    stmt: &ReturnStmt,
-  ) -> Result<(), SaturdayResult> {
+  fn visit_return_stmt(&self, _wrapper: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), SaturdayResult> {
     if let Some(value) = stmt.value.clone() {
       Err(SaturdayResult::return_value(self.evaluate(value)?))
     } else {

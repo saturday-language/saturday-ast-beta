@@ -123,7 +123,7 @@ fn define_ast(
   for t in &tree_types {
     writeln!(
       file,
-      "      {0}::{1}(v) => {3}_visitor.visit_{2}_{3}(wrapper, &v),",
+      "      {0}::{1}(v) => {3}_visitor.visit_{2}_{3}(wrapper, v),",
       base_name,
       t.base_class_name,
       t.base_class_name.to_lowercase(),

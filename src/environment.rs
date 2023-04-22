@@ -45,7 +45,7 @@ impl Environment {
   }
 
   pub fn assign(&mut self, name: &Token, value: Object) -> Result<(), SaturdayResult> {
-    if let Entry::Occupied(mut object) = self.values.entry(name.as_string().to_string()) {
+    if let Entry::Occupied(mut object) = self.values.entry(name.as_string()) {
       object.insert(value);
       Ok(())
     } else if let Some(enclosing) = &self.enclosing {

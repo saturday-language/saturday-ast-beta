@@ -88,7 +88,7 @@ impl Resolver {
     }
   }
 
-  fn resolve_function(&self, function: &FunctionStmt) {
+  fn resolve_function(&self, function: &FunctionStmt) -> Result<(), SaturdayResult> {
     self.begin_scope();
 
     for param in function.params.iter() {
@@ -96,8 +96,9 @@ impl Resolver {
       self.define(param);
     }
 
-    self.resolve(&function.body);
+    self.resolve(&function.body)?;
     self.end_scope();
+    Ok(())
   }
 }
 
