@@ -98,7 +98,10 @@ impl Saturday {
       let resolver = Resolver::new(&self.interpreter);
       let s = Rc::new(statements);
       resolver.resolve(&Rc::clone(&s))?;
-      self.interpreter.interpreter(&Rc::clone(&s));
+
+      if resolver.success() {
+        self.interpreter.interpreter(&Rc::clone(&s));
+      }
     }
 
     Ok(())

@@ -18,7 +18,6 @@ use std::rc::Rc;
 pub struct Interpreter {
   pub globals: Rc<RefCell<Environment>>,
   environment: RefCell<Rc<RefCell<Environment>>>,
-  nest: RefCell<usize>,
   locals: RefCell<HashMap<Rc<Expr>, usize>>,
 }
 
@@ -28,15 +27,8 @@ impl StmtVisitor<()> for Interpreter {
     self.execute_block(&stmt.statements, e)
   }
 
-  fn visit_break_stmt(&self, _: Rc<Stmt>, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
-    if *self.nest.borrow() == 0 {
-      Err(SaturdayResult::runtime_error(
-        &stmt.token,
-        "break outside of while/for loop",
-      ))
-    } else {
-      Err(SaturdayResult::Break)
-    }
+  fn visit_break_stmt(&self, _: Rc<Stmt>, _: &BreakStmt) -> Result<(), SaturdayResult> {
+    Err(SaturdayResult::Break)
   }
 
   fn visit_expression_stmt(
@@ -99,7 +91,6 @@ impl StmtVisitor<()> for Interpreter {
   }
 
   fn visit_while_stmt(&self, _: Rc<Stmt>, stmt: &WhileStmt) -> Result<(), SaturdayResult> {
-    *self.nest.borrow_mut() += 1;
     while self.is_truthy(&self.evaluate(stmt.condition.clone())?) {
       match self.execute(stmt.body.clone()) {
         Err(SaturdayResult::Break) => break,
@@ -108,7 +99,6 @@ impl StmtVisitor<()> for Interpreter {
       }
     }
 
-    *self.nest.borrow_mut() -= 1;
     Ok(())
   }
 }
@@ -291,7 +281,6 @@ impl Interpreter {
     Self {
       globals: Rc::clone(&globals),
       environment: RefCell::new(Rc::clone(&globals)),
-      nest: RefCell::new(0),
       locals: RefCell::new(HashMap::new()),
     }
   }
@@ -324,7 +313,6 @@ impl Interpreter {
 
   pub fn interpreter(&self, statements: &[Rc<Stmt>]) -> bool {
     let mut success = true;
-    *self.nest.borrow_mut() = 0;
     for statement in statements {
       if self.execute(statement.clone()).is_err() {
         success = false;

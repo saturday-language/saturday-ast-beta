@@ -17,6 +17,15 @@ use std::rc::Rc;
 pub struct Resolver<'a> {
   interpreter: &'a Interpreter,
   scopes: RefCell<Vec<RefCell<HashMap<String, bool>>>>,
+  had_error: RefCell<bool>,
+  current_function: RefCell<FunctionType>,
+  in_while: RefCell<bool>,
+}
+
+#[derive(PartialEq)]
+enum FunctionType {
+  None,
+  Function,
 }
 
 impl<'a> Resolver<'a> {
@@ -24,6 +33,9 @@ impl<'a> Resolver<'a> {
     Self {
       interpreter,
       scopes: RefCell::new(Vec::new()),
+      had_error: RefCell::new(false),
+      current_function: RefCell::new(FunctionType::None),
+      in_while: RefCell::new(false),
     }
   }
 
@@ -33,6 +45,10 @@ impl<'a> Resolver<'a> {
     }
 
     Ok(())
+  }
+
+  pub fn success(&self) -> bool {
+    !*self.had_error.borrow()
   }
 
   fn resolve_stmt(&self, stmt: Rc<Stmt>) -> Result<(), SaturdayResult> {
@@ -52,31 +68,19 @@ impl<'a> Resolver<'a> {
   }
 
   fn declare(&self, name: &Token) {
-    if self.scopes.borrow().is_empty() {
-      return;
-    }
+    if let Some(scope) = self.scopes.borrow().last() {
+      if scope.borrow().contains_key(&name.as_string()) {
+        self.error(name, "Already a variable with this name in this scope.");
+      }
 
-    self
-      .scopes
-      .borrow()
-      .last()
-      .unwrap()
-      .borrow_mut()
-      .insert(name.as_string(), false);
+      scope.borrow_mut().insert(name.as_string(), false);
+    }
   }
 
   fn define(&self, name: &Token) {
-    if self.scopes.borrow().is_empty() {
-      return;
+    if let Some(scope) = self.scopes.borrow().last() {
+      scope.borrow_mut().insert(name.as_string(), true);
     }
-
-    self
-      .scopes
-      .borrow()
-      .last()
-      .unwrap()
-      .borrow_mut()
-      .insert(name.as_string(), true);
   }
 
   fn resolve_local(&self, expr: Rc<Expr>, name: &Token) {
@@ -88,7 +92,8 @@ impl<'a> Resolver<'a> {
     }
   }
 
-  fn resolve_function(&self, function: &FunctionStmt) -> Result<(), SaturdayResult> {
+  fn resolve_function(&self, function: &FunctionStmt, f_type: FunctionType) -> Result<(), SaturdayResult> {
+    let enclosing_function = self.current_function.replace(f_type);
     self.begin_scope();
 
     for param in function.params.iter() {
@@ -98,7 +103,14 @@ impl<'a> Resolver<'a> {
 
     self.resolve(&function.body)?;
     self.end_scope();
+    self.current_function.replace(enclosing_function);
+
     Ok(())
+  }
+
+  fn error(&self, token: &Token, message: &str) {
+    self.had_error.replace(true);
+    SaturdayResult::runtime_error(token, message);
   }
 }
 
@@ -110,7 +122,11 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     Ok(())
   }
 
-  fn visit_break_stmt(&self, _: Rc<Stmt>, _expr: &BreakStmt) -> Result<(), SaturdayResult> {
+  fn visit_break_stmt(&self, _: Rc<Stmt>, stmt: &BreakStmt) -> Result<(), SaturdayResult> {
+    if !*self.in_while.borrow() {
+      self.error(&stmt.token, "break statement outside of a while/for loop");
+    }
+
     Ok(())
   }
 
@@ -127,7 +143,7 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     self.declare(&stmt.name);
     self.define(&stmt.name);
 
-    self.resolve_function(stmt)?;
+    self.resolve_function(stmt, FunctionType::Function)?;
     Ok(())
   }
 
@@ -147,6 +163,10 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
   }
 
   fn visit_return_stmt(&self, _: Rc<Stmt>, stmt: &ReturnStmt) -> Result<(), SaturdayResult> {
+    if *self.current_function.borrow() == FunctionType::None {
+      self.error(&stmt.keyword, "Can't return from top-level code.");
+    }
+
     if let Some(value) = stmt.value.clone() {
       self.resolve_expr(value)?;
     }
@@ -165,8 +185,11 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
   }
 
   fn visit_while_stmt(&self, _: Rc<Stmt>, stmt: &WhileStmt) -> Result<(), SaturdayResult> {
+    self.in_while.replace(true);
     self.resolve_expr(stmt.condition.clone())?;
     self.resolve_stmt(stmt.body.clone())?;
+    self.in_while.replace(false);
+
     Ok(())
   }
 }
