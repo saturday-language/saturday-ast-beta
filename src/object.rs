@@ -1,4 +1,4 @@
-use crate::callable::Callable;
+use crate::callable::{Callable, SaturdayCallable};
 use crate::saturday_class::SaturdayClass;
 use std::fmt;
 use std::fmt::Formatter;

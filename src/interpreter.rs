@@ -1,4 +1,4 @@
-use crate::callable::Callable;
+use crate::callable::{Callable, SaturdayCallable};
 use crate::environment::Environment;
 use crate::error::SaturdayResult;
 use crate::expr::*;
@@ -28,7 +28,7 @@ impl StmtVisitor<()> for Interpreter {
     self.execute_block(&stmt.statements, e)
   }
 
-  fn visit_class_stmt(&self, wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), SaturdayResult> {
+  fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), SaturdayResult> {
     self
       .environment
       .borrow()
@@ -226,6 +226,19 @@ impl ExprVisitor<Object> for Interpreter {
       }
 
       function.func.call(self, arguments)
+    } else if let Object::Class(class) = callee {
+      if arguments.len() != class.arity() {
+        return Err(SaturdayResult::runtime_error(
+          &expr.paren,
+          &format!(
+            "Expected {} arguments but got {}.",
+            class.arity(),
+            arguments.len()
+          ),
+        ));
+      }
+
+      class.call(self, arguments)
     } else {
       Err(SaturdayResult::runtime_error(
         &expr.paren,
