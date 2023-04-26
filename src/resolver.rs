@@ -5,8 +5,8 @@ use crate::expr::{
 };
 use crate::interpreter::Interpreter;
 use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
-  StmtVisitor, WhileStmt,
+  BlockStmt, BreakStmt, ClassStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt,
+  ReturnStmt, Stmt, StmtVisitor, WhileStmt,
 };
 use crate::token::Token;
 use std::cell::RefCell;
@@ -92,7 +92,11 @@ impl<'a> Resolver<'a> {
     }
   }
 
-  fn resolve_function(&self, function: &FunctionStmt, f_type: FunctionType) -> Result<(), SaturdayResult> {
+  fn resolve_function(
+    &self,
+    function: &FunctionStmt,
+    f_type: FunctionType,
+  ) -> Result<(), SaturdayResult> {
     let enclosing_function = self.current_function.replace(f_type);
     self.begin_scope();
 
@@ -119,6 +123,12 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
     self.begin_scope();
     self.resolve(&stmt.statements)?;
     self.end_scope();
+    Ok(())
+  }
+
+  fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), SaturdayResult> {
+    self.declare(&stmt.name);
+    self.define(&stmt.name);
     Ok(())
   }
 
@@ -248,7 +258,9 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
         .last()
         .unwrap()
         .borrow()
-        .get(&expr.name.as_string()).copied() == Some(false)
+        .get(&expr.name.as_string())
+        .copied()
+        == Some(false)
     {
       Err(SaturdayResult::runtime_error(
         &expr.name,

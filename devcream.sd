@@ -1,0 +1,7 @@
+class DevonshireCream {
+    serveOn() {
+        return "screen";
+    }
+}
+
+print DevonshireCream;

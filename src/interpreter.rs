@@ -4,10 +4,11 @@ use crate::error::SaturdayResult;
 use crate::expr::*;
 use crate::native_functions::NativeClock;
 use crate::object::*;
+use crate::saturday_class::SaturdayClass;
 use crate::saturday_function::SaturdayFunction;
 use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
-  StmtVisitor, WhileStmt,
+  BlockStmt, BreakStmt, ClassStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt,
+  ReturnStmt, Stmt, StmtVisitor, WhileStmt,
 };
 use crate::token::Token;
 use crate::token_type::TokenType;
@@ -25,6 +26,22 @@ impl StmtVisitor<()> for Interpreter {
   fn visit_block_stmt(&self, _: Rc<Stmt>, stmt: &BlockStmt) -> Result<(), SaturdayResult> {
     let e = Environment::new_with_enclosing(self.environment.borrow().clone());
     self.execute_block(&stmt.statements, e)
+  }
+
+  fn visit_class_stmt(&self, wrapper: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), SaturdayResult> {
+    self
+      .environment
+      .borrow()
+      .borrow_mut()
+      .define(&stmt.name.as_string(), Object::Nil);
+    let class = Object::Class(SaturdayClass::new(stmt.name.as_string()));
+    self
+      .environment
+      .borrow()
+      .borrow_mut()
+      .assign(&stmt.name, class)?;
+
+    Ok(())
   }
 
   fn visit_break_stmt(&self, _: Rc<Stmt>, _: &BreakStmt) -> Result<(), SaturdayResult> {

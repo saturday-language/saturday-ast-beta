@@ -25,6 +25,7 @@ mod interpreter;
 mod native_functions;
 mod object;
 mod resolver;
+mod saturday_class;
 mod saturday_function;
 mod stmt;
 

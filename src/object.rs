@@ -1,4 +1,5 @@
 use crate::callable::Callable;
+use crate::saturday_class::SaturdayClass;
 use std::fmt;
 use std::fmt::Formatter;
 
@@ -8,6 +9,7 @@ pub enum Object {
   Str(String),
   Bool(bool),
   Func(Callable),
+  Class(SaturdayClass),
   Nil,
   ArithmeticError,
 }
@@ -25,6 +27,7 @@ impl fmt::Display for Object {
         }
       }
       Object::Func(_) => write!(f, "<func>"),
+      Object::Class(c) => write!(f, "<Class {}>", c.to_string()),
       Object::Nil => write!(f, "nil"),
       Object::ArithmeticError => panic!("Should not be trying to print this"),
     }

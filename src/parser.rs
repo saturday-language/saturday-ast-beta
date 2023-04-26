@@ -4,8 +4,8 @@ use crate::expr::{
 };
 use crate::object::Object;
 use crate::stmt::{
-  BlockStmt, BreakStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, Stmt,
-  WhileStmt,
+  BlockStmt, BreakStmt, ClassStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt,
+  ReturnStmt, Stmt, WhileStmt,
 };
 use crate::token::Token;
 use crate::token_type::*;
@@ -42,7 +42,9 @@ impl<'a> Parser<'a> {
   }
 
   fn declaration(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
-    let result = if self.is_match(&[TokenType::Fun]) {
+    let result = if self.is_match(&[TokenType::Class]) {
+      self.class_declaration()
+    } else if self.is_match(&[TokenType::Fun]) {
       self.function("function")
     } else if self.is_match(&[TokenType::Def]) {
       self.def_declaration()
@@ -87,6 +89,22 @@ impl<'a> Parser<'a> {
 
   fn expression(&mut self) -> Result<Expr, SaturdayResult> {
     self.assignment()
+  }
+
+  fn class_declaration(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
+    let name = self.consume(TokenType::Identifier, "Expect class name.")?;
+    self.consume(TokenType::LeftBrace, "Expect '{' before class body.")?;
+
+    let mut methods = Vec::new();
+    while !self.check(TokenType::RightBrace) && !self.is_at_end() {
+      methods.push(self.function("method")?);
+    }
+    self.consume(TokenType::RightBrace, "Expect '}' after class body.")?;
+
+    Ok(Rc::new(Stmt::Class(Rc::new(ClassStmt {
+      name,
+      methods: Rc::new(methods),
+    }))))
   }
 
   fn statement(&mut self) -> Result<Rc<Stmt>, SaturdayResult> {
