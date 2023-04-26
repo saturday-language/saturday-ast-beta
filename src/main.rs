@@ -27,6 +27,7 @@ mod object;
 mod resolver;
 mod saturday_class;
 mod saturday_function;
+mod saturday_instance;
 mod stmt;
 
 fn main() {

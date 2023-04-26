@@ -1,7 +1,9 @@
+use std::rc::Rc;
 use crate::callable::SaturdayCallable;
 use crate::error::SaturdayResult;
 use crate::interpreter::Interpreter;
 use crate::object::Object;
+use crate::saturday_instance::SaturdayInstance;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SaturdayClass {
@@ -28,7 +30,7 @@ impl SaturdayCallable for SaturdayClass {
     _interpreter: &Interpreter,
     _arguments: Vec<Object>,
   ) -> Result<Object, SaturdayResult> {
-    Ok(Object::Nil)
+    Ok(Object::Instance(SaturdayInstance::new(Rc::new(self))))
   }
 
   fn arity(&self) -> usize {
