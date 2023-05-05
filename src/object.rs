@@ -1,8 +1,9 @@
 use crate::callable::{Callable, SaturdayCallable};
 use crate::saturday_class::SaturdayClass;
+use crate::saturday_instance::SaturdayInstance;
 use std::fmt;
 use std::fmt::Formatter;
-use crate::saturday_instance::SaturdayInstance;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Object {
@@ -10,7 +11,7 @@ pub enum Object {
   Str(String),
   Bool(bool),
   Func(Callable),
-  Class(SaturdayClass),
+  Class(Rc<SaturdayClass>),
   Instance(SaturdayInstance),
   Nil,
   ArithmeticError,

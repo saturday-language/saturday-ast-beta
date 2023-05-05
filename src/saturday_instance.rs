@@ -1,5 +1,5 @@
-use std::rc::Rc;
 use crate::saturday_class::SaturdayClass;
+use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SaturdayInstance {

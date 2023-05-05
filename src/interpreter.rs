@@ -34,7 +34,7 @@ impl StmtVisitor<()> for Interpreter {
       .borrow()
       .borrow_mut()
       .define(&stmt.name.as_string(), Object::Nil);
-    let class = Object::Class(SaturdayClass::new(stmt.name.as_string()));
+    let class = Object::Class(Rc::new(SaturdayClass::new(stmt.name.as_string())));
     self
       .environment
       .borrow()
@@ -238,7 +238,7 @@ impl ExprVisitor<Object> for Interpreter {
         ));
       }
 
-      class.call(self, arguments)
+      class.instantiate(self, arguments, Rc::clone(&class))
     } else {
       Err(SaturdayResult::runtime_error(
         &expr.paren,
