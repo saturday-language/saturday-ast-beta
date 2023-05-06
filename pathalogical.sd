@@ -1,0 +1,14 @@
+class Person {
+    sayName() {
+        print this.name;
+    }
+}
+
+def jane = Person();
+jane.name = "Jane";
+
+def bill = Person();
+bill.name = "Bill";
+
+bill.sayName = jane.sayName;
+bill.sayName();

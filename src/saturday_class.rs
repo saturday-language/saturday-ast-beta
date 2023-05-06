@@ -3,16 +3,18 @@ use crate::error::SaturdayResult;
 use crate::interpreter::Interpreter;
 use crate::object::Object;
 use crate::saturday_instance::SaturdayInstance;
+use std::collections::HashMap;
 use std::rc::Rc;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SaturdayClass {
   name: String,
+  methods: HashMap<String, Object>,
 }
 
 impl SaturdayClass {
-  pub fn new(name: String) -> Self {
-    Self { name }
+  pub fn new(name: String, methods: HashMap<String, Object>) -> Self {
+    Self { name, methods }
   }
 
   pub fn instantiate(
@@ -22,6 +24,10 @@ impl SaturdayClass {
     class: Rc<SaturdayClass>,
   ) -> Result<Object, SaturdayResult> {
     Ok(Object::Instance(Rc::new(SaturdayInstance::new(class))))
+  }
+
+  pub fn find_method(&self, name: &str) -> Option<Object> {
+    self.methods.get(name).cloned()
   }
 }
 

@@ -1,5 +1,8 @@
 use crate::error::SaturdayResult;
-use crate::expr::{AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetExpr, GroupingExpr, LiteralExpr, LogicalExpr, SetExpr, UnaryExpr, VariableExpr};
+use crate::expr::{
+  AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetExpr, GroupingExpr, LiteralExpr,
+  LogicalExpr, SetExpr, UnaryExpr, VariableExpr,
+};
 use crate::interpreter::Interpreter;
 use crate::stmt::{
   BlockStmt, BreakStmt, ClassStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt,
@@ -23,6 +26,7 @@ pub struct Resolver<'a> {
 enum FunctionType {
   None,
   Function,
+  Method,
 }
 
 impl<'a> Resolver<'a> {
@@ -126,6 +130,19 @@ impl<'a> StmtVisitor<()> for Resolver<'a> {
   fn visit_class_stmt(&self, _: Rc<Stmt>, stmt: &ClassStmt) -> Result<(), SaturdayResult> {
     self.declare(&stmt.name);
     self.define(&stmt.name);
+
+    for method in stmt.methods.deref() {
+      let declaration = FunctionType::Method;
+      if let Stmt::Function(method) = method.deref() {
+        self.resolve_function(method, declaration)?;
+      } else {
+        return Err(SaturdayResult::runtime_error(
+          &stmt.name,
+          "Class method did not resolve into a function statement",
+        ));
+      }
+    }
+
     Ok(())
   }
 

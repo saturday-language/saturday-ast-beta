@@ -14,6 +14,7 @@ use crate::token::Token;
 use crate::token_type::TokenType;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::rc::Rc;
 
 pub struct Interpreter {
@@ -34,7 +35,20 @@ impl StmtVisitor<()> for Interpreter {
       .borrow()
       .borrow_mut()
       .define(&stmt.name.as_string(), Object::Nil);
-    let class = Object::Class(Rc::new(SaturdayClass::new(stmt.name.as_string())));
+
+    let mut methods = HashMap::new();
+    for method in stmt.methods.deref() {
+      if let Stmt::Function(func) = method.deref() {
+        let function = Object::Func(Callable {
+          func: Rc::new(SaturdayFunction::new(func, &self.environment.borrow())),
+        });
+        methods.insert(func.name.as_string(), function);
+      } else {
+        panic!("non-function method in class");
+      };
+    }
+
+    let class = Object::Class(Rc::new(SaturdayClass::new(stmt.name.as_string(), methods)));
     self
       .environment
       .borrow()
@@ -292,7 +306,10 @@ impl ExprVisitor<Object> for Interpreter {
       inst.set(&expr.name, value.clone());
       Ok(value)
     } else {
-      Err(SaturdayResult::runtime_error(&expr.name, "Only instances have fields"))
+      Err(SaturdayResult::runtime_error(
+        &expr.name,
+        "Only instances have fields",
+      ))
     }
   }
 

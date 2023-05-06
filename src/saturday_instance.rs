@@ -24,6 +24,8 @@ impl SaturdayInstance {
   pub fn get(&self, name: &Token) -> Result<Object, SaturdayResult> {
     if let Entry::Occupied(o) = self.fields.borrow_mut().entry(name.as_string()) {
       Ok(o.get().clone())
+    } else if let Some(method) = self.class.find_method(&name.as_string()) {
+      Ok(method)
     } else {
       Err(SaturdayResult::runtime_error(
         name,

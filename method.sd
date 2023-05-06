@@ -1,0 +1,16 @@
+class Foo {
+    bar(arg) {
+        print "bar from " + arg;
+    }
+}
+
+def f = Foo();
+
+print "Calling f.bar()";
+f.bar("f.bar");
+
+def barcall = f.bar;
+print "Calling f.bar() through barcall";
+barcall("barcall");
+
+print "Done!";

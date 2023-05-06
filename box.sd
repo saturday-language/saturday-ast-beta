@@ -1,0 +1,9 @@
+class Box {}
+
+fun notMethod(argument) {
+    print "called Function with " + argument;
+}
+
+def box = Box();
+box.function = notMethod;
+box.function("argument");

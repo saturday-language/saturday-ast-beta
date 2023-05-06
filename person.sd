@@ -1,0 +1,11 @@
+class Person {
+    sayName() {
+        print this.name;
+    }
+}
+
+def jane = Person();
+jane.name = "Jane";
+
+def method = jane.sayName;
+method();
