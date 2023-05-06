@@ -21,7 +21,7 @@ impl SaturdayClass {
     _arguments: Vec<Object>,
     class: Rc<SaturdayClass>,
   ) -> Result<Object, SaturdayResult> {
-    Ok(Object::Instance(SaturdayInstance::new(class)))
+    Ok(Object::Instance(Rc::new(SaturdayInstance::new(class))))
   }
 }
 

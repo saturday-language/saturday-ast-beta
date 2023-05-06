@@ -1,11 +1,11 @@
+use crate::error::SaturdayResult;
+use crate::object::Object;
+use crate::saturday_class::SaturdayClass;
+use crate::token::Token;
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use crate::saturday_class::SaturdayClass;
 use std::rc::Rc;
-use crate::error::SaturdayResult;
-use crate::object::Object;
-use crate::token::Token;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SaturdayInstance {
@@ -25,8 +25,15 @@ impl SaturdayInstance {
     if let Entry::Occupied(o) = self.fields.borrow_mut().entry(name.as_string()) {
       Ok(o.get().clone())
     } else {
-      Err(SaturdayResult::runtime_error(name, &format!("Undefined property '{}'.", name.as_string())))
+      Err(SaturdayResult::runtime_error(
+        name,
+        &format!("Undefined property '{}'.", name.as_string()),
+      ))
     }
+  }
+
+  pub fn set(&self, name: &Token, value: Object) {
+    self.fields.borrow_mut().insert(name.as_string(), value);
   }
 }
 

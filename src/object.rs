@@ -12,7 +12,7 @@ pub enum Object {
   Bool(bool),
   Func(Callable),
   Class(Rc<SaturdayClass>),
-  Instance(SaturdayInstance),
+  Instance(Rc<SaturdayInstance>),
   Nil,
   ArithmeticError,
 }
