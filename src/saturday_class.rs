@@ -5,7 +5,7 @@ use crate::object::Object;
 use crate::saturday_instance::SaturdayInstance;
 use std::rc::Rc;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SaturdayClass {
   name: String,
 }
@@ -25,13 +25,11 @@ impl SaturdayClass {
   }
 }
 
-/*
 impl ToString for SaturdayClass {
   fn to_string(&self) -> String {
     self.name.clone()
   }
 }
- */
 
 impl SaturdayCallable for SaturdayClass {
   fn call(
@@ -44,9 +42,5 @@ impl SaturdayCallable for SaturdayClass {
 
   fn arity(&self) -> usize {
     0
-  }
-
-  fn to_string(&self) -> String {
-    self.name.clone()
   }
 }

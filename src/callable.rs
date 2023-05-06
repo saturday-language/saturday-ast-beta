@@ -12,13 +12,13 @@ pub struct Callable {
 
 impl Debug for Callable {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", SaturdayCallable::to_string(self))
+    write!(f, "<Callable>")
   }
 }
 
 impl Display for Callable {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", SaturdayCallable::to_string(self))
+    write!(f, "<Callable>")
   }
 }
 
@@ -38,23 +38,4 @@ pub trait SaturdayCallable {
     arguments: Vec<Object>,
   ) -> Result<Object, SaturdayResult>;
   fn arity(&self) -> usize;
-  fn to_string(&self) -> String;
-}
-
-impl SaturdayCallable for Callable {
-  fn call(
-    &self,
-    interpreter: &Interpreter,
-    arguments: Vec<Object>,
-  ) -> Result<Object, SaturdayResult> {
-    self.func.call(interpreter, arguments)
-  }
-
-  fn arity(&self) -> usize {
-    self.func.arity()
-  }
-
-  fn to_string(&self) -> String {
-    self.func.to_string()
-  }
 }

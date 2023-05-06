@@ -247,6 +247,15 @@ impl ExprVisitor<Object> for Interpreter {
     }
   }
 
+  fn visit_get_expr(&self, _: Rc<Expr>, expr: &GetExpr) -> Result<Object, SaturdayResult> {
+    let object = self.evaluate(expr.object.clone())?;
+    if let Object::Instance(inst) = object {
+      Ok(inst.get(&expr.name)?)
+    } else {
+      Err(SaturdayResult::runtime_error(&expr.name, "Only instances have properties"))
+    }
+  }
+
   fn visit_grouping_expr(
     &self,
     _: Rc<Expr>,

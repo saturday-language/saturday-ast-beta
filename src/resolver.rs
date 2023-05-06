@@ -1,8 +1,5 @@
 use crate::error::SaturdayResult;
-use crate::expr::{
-  AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GroupingExpr, LiteralExpr, LogicalExpr,
-  UnaryExpr, VariableExpr,
-};
+use crate::expr::{AssignExpr, BinaryExpr, CallExpr, Expr, ExprVisitor, GetExpr, GroupingExpr, LiteralExpr, LogicalExpr, UnaryExpr, VariableExpr};
 use crate::interpreter::Interpreter;
 use crate::stmt::{
   BlockStmt, BreakStmt, ClassStmt, DefStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt,
@@ -223,6 +220,11 @@ impl<'a> ExprVisitor<()> for Resolver<'a> {
       self.resolve_expr(argument.clone())?;
     }
 
+    Ok(())
+  }
+
+  fn visit_get_expr(&self, _: Rc<Expr>, expr: &GetExpr) -> Result<(), SaturdayResult> {
+    self.resolve_expr(expr.object.clone())?;
     Ok(())
   }
 

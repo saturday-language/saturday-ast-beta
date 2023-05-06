@@ -47,8 +47,10 @@ impl SaturdayCallable for SaturdayFunction {
   fn arity(&self) -> usize {
     self.params.len()
   }
+}
 
+impl ToString for SaturdayFunction {
   fn to_string(&self) -> String {
-    self.name.as_string()
+    format!("<Function {}>", self.name.as_string())
   }
 }
